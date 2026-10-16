@@ -14,7 +14,7 @@ The unlabeled benchmark reports `successful_route_rate`; it does not call that v
 
 The current release workflow builds x86_64 Linux binaries and RPM packages, then validates RPM contents and service behavior in Rocky Linux 9.6 and 10.2 containers. The package specs declare x86_64 and systemd dependencies. The prompted controller/client shell installers use the RPM toolchain and are documented for Rocky Linux 9 and 10. This is a Rocky/RHEL-family direction, not a universal Linux installer. Other distributions and architectures remain unclaimed until tested; see [the support matrix](V13_SUPPORT_MATRIX.md).
 
-RPM configuration files use `config(noreplace)`, and uninstall scripts have preserve-state and explicit purge behavior. The Rocky lifecycle script tests install, upgrade, downgrade, and re-upgrade when prior RPMs are supplied. V13 migration acceptance must use genuine V8 8.0.0 client and controller RPMs. The package-infrastructure fixture creates a synthetic prior-version RPM from the current source/spec; it exercises packaging mechanics only and is not evidence of V8 compatibility. If the genuine V8 packages are absent, the V8-to-V13 migration gate remains unverified.
+RPM configuration files use `config(noreplace)`, and uninstall scripts have preserve-state and explicit purge behavior. The Rocky lifecycle script tests install, upgrade, downgrade, and re-upgrade when prior RPMs are supplied. The V13 release gate uses genuine V12 client and controller RPMs; genuine V8/V10 packages remain accepted for historical migration checks. The package-infrastructure fixture creates a synthetic prior-version RPM from the current source/spec and exercises packaging mechanics only.
 
 The packages install systemd units and rely on RPM scriptlets. No DEB, OCI image, non-systemd service adapter, or architecture other than x86_64 is presently part of the verified release surface. Broader formats require their own package contents, installation instructions, upgrade/rollback path, and target acceptance.
 
@@ -48,7 +48,7 @@ NLI is marked proprietary in the RPM metadata and repository documentation. Thir
 
 - Tested Rocky 9/10 x86_64 RPM support does not imply support for all RHEL derivatives, all minor releases, other CPU architectures, or all Linux distributions.
 - A static frontend alone cannot deliver the authenticated control plane; a compatible proxy/runtime and reachable controller are required.
-- V8-to-V13 migration remains conditional on genuine V8 artifacts and a completed release matrix run.
+- V12-to-V13 migration requires genuine V12 artifacts and a completed release matrix run; historical V8/V10 compatibility claims require their corresponding genuine artifacts.
 - Upgrade rollback of RPM files does not by itself roll back external Supabase state or guarantee reversal of an incompatible schema/data change. Back up controller state and document schema compatibility before release.
 - Provenance and hashes establish artifact identity and build inputs, not semantic correctness, production security, or third-party licensing clearance.
 - Parser guarantees remain scoped to supplied reviewed corpora and explicit lossless fallback behavior; they do not establish semantic correctness for every future log format.

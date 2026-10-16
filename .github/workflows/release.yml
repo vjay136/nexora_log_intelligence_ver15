@@ -60,7 +60,7 @@ jobs:
       - name: Download genuine previous release RPMs
         env:
           GH_TOKEN: ${{ github.token }}
-          PREVIOUS_RELEASE_TAG: ${{ inputs.previous_release_tag || 'v9.0.0-5' }}
+          PREVIOUS_RELEASE_TAG: ${{ inputs.previous_release_tag || 'v12.0.0-1' }}
         run: |
           mkdir -p '${{ runner.temp }}/previous'
           if gh release download "$PREVIOUS_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \

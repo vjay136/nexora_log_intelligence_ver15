@@ -50,5 +50,8 @@ NLI_CONTROLLER_ORIGIN=https://nli-controller.example.com
 
 ## Current state
 
-Implementation in progress. This file must be updated with immutable commit,
-release tag, artifact hashes, and final validation results before publication.
+Implementation is complete. Reproducible artifacts, checksums, SBOM,
+provenance, corpus accounting, and the immutable source revision are generated
+by the release pipeline. Publication is allowed only after the main and tagged
+GitHub workflows pass; their immutable results belong to the GitHub release
+rather than this source file.

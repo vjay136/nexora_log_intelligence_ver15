@@ -26,4 +26,4 @@ The release process runs uncached Go tests and vet, Web/API tests, browser tests
 - The supplied corpus accounts for 728/728 inputs: 723 valid records have exact source-field parity, five hash-pinned malformed or truncated records reach expected quarantine, and 278/278 known family keys are covered.
 - The production agent processed and durably checkpointed 5,368,709,120 bytes and 1,310,720 records in 466.717 seconds on the recorded six-logical-CPU Linux/amd64 Docker host. The report is `docs/evidence/THROUGHPUT_5G.json`.
 
-Release packaging, Rocky lifecycle acceptance, private GitHub publication, and remote release-asset verification remain open until those exact final-revision gates pass.
+Release packaging, Rocky lifecycle acceptance, private GitHub publication, and remote asset verification are recorded against the immutable commit in the generated release evidence and GitHub workflow results.

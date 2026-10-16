@@ -28,8 +28,8 @@ if [[ -n $previous_client && -n $previous_controller ]]; then
   [[ $(rpm -qp --qf '%{NAME}' "$previous_controller") == nli-controller-agent ]] || fail "previous controller RPM has unexpected package name"
   previous_client_version=$(rpm -qp --qf '%{VERSION}' "$previous_client")
   previous_controller_version=$(rpm -qp --qf '%{VERSION}' "$previous_controller")
-  [[ $previous_client_version == 8.0.0 || $previous_client_version == 10.0.0 ]] || fail "previous client must be a genuine V8 or V10 RPM"
-  [[ $previous_controller_version == 8.0.0 || $previous_controller_version == 10.0.0 ]] || fail "previous controller must be a genuine V8 or V10 RPM"
+  [[ $previous_client_version == 8.0.0 || $previous_client_version == 10.0.0 || $previous_client_version == 12.0.0 ]] || fail "previous client must be a genuine V8, V10, or V12 RPM"
+  [[ $previous_controller_version == 8.0.0 || $previous_controller_version == 10.0.0 || $previous_controller_version == 12.0.0 ]] || fail "previous controller must be a genuine V8, V10, or V12 RPM"
   previous_client_nevra=$(rpm -qp --qf '%{VERSION}-%{RELEASE}' "$previous_client")
   previous_controller_nevra=$(rpm -qp --qf '%{VERSION}-%{RELEASE}' "$previous_controller")
   current_client_nevra=$(rpm -qp --qf '%{VERSION}-%{RELEASE}' "$client")

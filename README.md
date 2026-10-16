@@ -24,7 +24,7 @@ The linked SVG provides unlimited zoom. The 8K PNG is included for presentations
 - Fleet, controller, and client management with node identity, heartbeat age, service state, configured inputs, selected outputs, parser/config revisions, resource telemetry, command leases, results, and audit.
 - Family-isolated parsed JSON and quarantine files for ten default inputs, plus simultaneous fan-out to Grafana Loki and ClickHouse with independent batching, retry, and local failure receipts. Authenticated bounded parser telemetry flows separately to the controller for live dashboards. Exact quarantined source records remain in the durable client queue and may be uploaded only when the operator enables bounded raw retention.
 - Pre-parse `default`, `filtered`, and `hybrid` selection by exact event name, service, and hostname, including reviewed presets for ImapDisconnected, AcctBadPswd, auth.loginByToken, MtaRequestingDomainTableUpdate, CARDDAV, and SieveRuleMsg.
-- x86_64 client and controller RPMs, one-use private-CA enrollment, fresh installation and V8-to-V13 upgrade acceptance (when genuine V8 RPMs are supplied), WebView/webapp archives, uninstall scripts, SBOM, provenance, and reproducible build checks.
+- x86_64 client and controller RPMs, one-use private-CA enrollment, fresh installation and V12-to-V13 upgrade acceptance (with genuine V12 RPMs), WebView/webapp archives, uninstall scripts, SBOM, provenance, and reproducible build checks. Historical V8/V10 packages remain accepted by the migration matrix.
 
 ## Accuracy contract
 
