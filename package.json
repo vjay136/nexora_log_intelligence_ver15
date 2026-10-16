@@ -1,0 +1,17 @@
+{
+  "name": "nexora-log-intelligence-v13",
+  "version": "13.0.0",
+  "private": true,
+  "type": "module",
+  "engines": { "node": "24.x" },
+  "scripts": {
+    "build": "node scripts/build-webapp.mjs",
+    "web:check": "node --check web/app.js && node --check web/e2e.spec.js && node --check api/v1/[...path].js && node --check \"functions/api/v1/[[path]].js\" && node --check scripts/vercel-preflight.mjs && node --test tests/vercel-proxy.test.js tests/vercel-preflight.test.js tests/cloudflare-proxy.test.js tests/cloudflare-tunnel-v13.test.js tests/aws-cloudflare-orchestrator-v13.test.js",
+    "web:test": "npm --prefix web run test:e2e",
+    "web:test:ui": "npm --prefix web run test:ui",
+    "vercel:preflight": "node scripts/vercel-preflight.mjs",
+    "vercel:deploy": "vercel deploy --prod",
+    "cloudflare:build": "node scripts/build-webapp.mjs",
+    "cloudflare:check": "node --test tests/cloudflare-proxy.test.js tests/cloudflare-tunnel-v13.test.js tests/aws-cloudflare-orchestrator-v13.test.js"
+  }
+}

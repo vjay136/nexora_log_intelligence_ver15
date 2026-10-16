@@ -1,0 +1,172 @@
+declare "popserv_filter" {
+
+    argument "logfilename" {}
+    argument "log_receiver" {}
+
+    loki.source.file "popserv" {
+        targets               = [{__path__ = argument.logfilename.value, "job" = "popserv"}]
+        forward_to            = [loki.process.popserv.receiver]
+        tail_from_end         = true
+    }
+
+    loki.process "popserv" {
+
+        forward_to = [loki.relabel.popserv_drop_label.receiver]
+        stage.regex {
+            // PopConnMade_typ1
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2}).(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3}).(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?:[A-Za-z]+).{1}(?:[0-9]+).{1}(?:[0-9]+).{1}(?P<tid>[0-9]+).{1}(?P<sev>[A-Za-z]+).{1}(?P<event>[A-Za-z]+).+?user=(?P<user>[^:]+).+?mbox=(?P<mbox>[0-9]+).+?mss=(?P<mss>[^:]+).+?cmd=(?P<cmd>[^:]+).+?port=(?:[^:]+).+?fromhost=(?P<fromhost>[0-9.0-9.0-9.0-9]+).+?sid=(?P<sid>[^:]+).+?resptime=(?P<resptime>[0-9]+).+?node=(?P<node>[^:]+).+?cosId=(?P<cosId>[^:]+).+$"
+        }
+        stage.regex {
+            // PopConnMade_typ2
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2}).(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3}).(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?:[A-Za-z]+).{1}(?:[0-9]+).{1}(?:[0-9]+).{1}(?P<tid>[0-9]+).{1}(?P<sev>[A-Za-z]+).{1}(?P<event>[A-Za-z]+).+?user=(?P<user>[^:]+).+?mbox=(?P<mbox>[0-9]+).+?mss=(?P<mss>[^:]+).+?cmd=(?P<cmd>[^:]+).+?port=(?P<port>[0-9]+).+?fromhost=(?P<fromhost>[0-9.]+).+?fromport=(?P<fromport>[0-9]+).+?sid=(?P<sid>[^:]+).+?respcode=(?P<respcode>[0-9]+).+?resptime=(?P<resptime>[0-9]+).+?node=(?P<node>[^:]+).+?nodePort=(?P<nodePort>[0-9]+).+?cosId=(?P<cosId>[^:]+).+?haProxyDstPort=(?P<haProxyDstPort>[0-9]+).+$"
+        }
+        stage.regex {
+            // PopConnMade_typ3
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2}).(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3}).(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?:[A-Za-z]+).{1}(?:[0-9]+).{1}(?:[0-9]+).{1}(?P<tid>[0-9]+).{1}(?P<sev>[A-Za-z]+).{1}(?P<event>[A-Za-z]+).+?user=(?P<user>[^:]+).+?mbox=(?P<mbox>[0-9]+).+?mss=(?P<mss>[^:]+).+?cmd=(?P<cmd>[^:]+).+?port=(?P<port>[0-9]+).+?fromhost=(?P<fromhost>[0-9.]+).+?fromport=(?P<fromport>[0-9]+).+?sid=(?P<sid>[^:]+).+?respcode=(?P<respcode>[0-9]+).+?resptime=(?P<resptime>[0-9]+).+?node=(?P<node>[^:]+).+?nodePort=(?P<nodePort>[0-9]+).+?cosId=(?P<cosId>[^:]+).+$"
+        }
+        stage.regex {
+            // AcctPopNotAllowed_Type1
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2}).(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3}).(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?:[A-Za-z]+).{1}(?:[0-9]+).{1}(?:[0-9]+).{1}(?P<tid>[0-9]+).{1}(?P<sev>[A-Za-z]+).{1}(?P<event>[A-Za-z]+).+?user=(?P<user>[^:]+).+?mbox=(?P<mbox>[0-9]+).+?mss=(?P<mss>[^:]+).+?cmd=(?P<cmd>[^:]+).+?fromhost=(?P<fromhost>[0-9.]+).+?fromport=(?P<fromport>[0-9]+).+?dirdelay=(?P<dirdelay>[0-9]+).+?sid=(?P<sid>[^:]+).+?resptime=(?P<resptime>[0-9]+).+?cosId=(?P<cosId>[^:]+).+?haProxyDstPort=(?P<haProxyDstPort>[0-9]+).+$"
+        }
+        stage.regex {
+            // AcctPopNotAllowed_Type2
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2}).(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3}).(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?:[A-Za-z]+).{1}(?:[0-9]+).{1}(?:[0-9]+).{1}(?P<tid>[0-9]+).{1}(?P<sev>[A-Za-z]+).{1}(?P<event>[A-Za-z]+).+?user=(?P<user>[^:]+).+?mbox=(?P<mbox>[0-9]+).+?mss=(?P<mss>[^:]+).+?cmd=(?P<cmd>[^:]+).+?fromhost=(?P<fromhost>[0-9.]+).+?fromport=(?P<fromport>[0-9]+).+?sid=(?P<sid>[^:]+).+?resptime=(?P<resptime>[0-9]+).+?cosId=(?P<cosId>[^:]+).+?haProxyDstPort=(?P<haProxyDstPort>[0-9]+).+$"
+        }
+
+
+        // Generate network_bucket from fromhost (/24 network)
+        stage.template {
+            source = "network_bucket"
+            template = `
+                {{- if and .fromhost (regexMatch "^([0-9]{1,3}\\.){3}[0-9]{1,3}$" .fromhost) -}}
+                    {{- $net := regexReplaceAll "^([0-9]+\\.[0-9]+\\.[0-9]+)\\.[0-9]+$" .fromhost "$1" -}}
+                    {{ printf "%.1s" (Sha2Hash $net "") }}
+                {{- end -}}
+            `
+        }
+
+        stage.labels {
+            values = {
+                network_bucket = "network_bucket",
+            }
+        }
+
+        stage.geoip {
+                db = "/etc/geoip-db/GeoLite2-Country.mmdb"
+                source  = "fromhost"
+                db_type = "country"
+        }
+        stage.geoip {
+            db = "/etc/geoip-db/GeoLite2-ASN.mmdb"
+            source  = "fromhost"
+            db_type = "asn"
+        }
+        stage.geoip {
+            db = "/etc/geoip-db/GeoLite2-City.mmdb"
+            source  = "fromhost"
+            db_type = "city"
+        }
+
+        stage.labels {
+            values = {
+                event = null,
+            }
+        }
+
+        stage.template {
+            source = "is_private_ip"
+            template = "{{ if regexMatch `^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.)` .fromhost }}true{{ else }}false{{ end }}"
+        }
+        stage.template {
+            source = "geoip_country_code"
+            template = "{{ if eq .is_private_ip \"true\" }}GB{{ else }}{{ .geoip_country_code }}{{ end }}"
+        }
+        stage.template {
+            source = "geoip_city_name"
+            template = "{{ if eq .is_private_ip \"true\" }}OPWV_WEB{{ else }}{{ .geoip_city_name }}{{ end }}"
+        }
+
+        stage.template {
+            source = "formated_date"
+            template = "{{.year}}-{{.month}}-{{.day}}T{{.hour}}:{{.min}}:{{.sec}}.{{.ms}}+{{.timezone}}:00"
+        }
+
+        stage.timestamp {
+            source = "formated_date"
+            format = "2006-01-02T15:04:05.000Z07:00"
+            action_on_failure = "skip"
+        }
+
+        stage.match {
+            selector = "{event=~\"PopConnMade|AcctPopNotAllowed\"}"
+            stage.replace {
+                source     = "cmd"
+                expression = "(\\\\3a)"
+                replace    = "\\\\"
+            }
+            stage.replace {
+                source     = "cmd"
+                expression = "(\")"
+                replace    = " "
+            }
+            stage.replace {
+                source     = "cmd"
+                expression = "(\\\\5c)"
+                replace    = "\\\\"
+            }
+            stage.regex {
+                source     = "user"
+                expression = "^(?P<user_norm>[^@]+)"
+            }
+
+            stage.template {
+                source   = "user_norm"
+                template = "{{ TrimSpace (ToLower .Value) }}"
+            }
+
+            stage.template {
+                source   = "user_norm"
+                template = `{{ regexReplaceAll "(\\.t21|\\.t1)$" .Value "" }}`
+            }
+
+            stage.template {
+                source   = "user_norm"
+                template = `{{ Sha2Hash .Value "" }}`
+            }
+
+            stage.regex {
+                source     = "user_norm"
+                expression = "^(?P<email_bucket>.{2})"
+            }
+
+            stage.labels {
+                values = {
+                    email_bucket = "email_bucket",
+                }
+            }
+
+            stage.template {
+                source = "PopConnMade_label"
+                template = "{ \"hostname\": \"{{ .hostname }}\", \"tid\": \"{{ .tid }}\", \"sev\": \"{{ .sev }}\", \"event\": \"{{ .event }}\", \"user\": \"{{ .user }}\", \"mbox\": \"{{ .mbox }}\", \"mss\": \"{{ .mss }}\", \"cmd\": \"{{ .cmd }}\", \"fromhost\": \"{{ .fromhost }}\", \"sid\": \"{{ .sid }}\", \"resptime\": {{ .resptime }}, \"node\": \"{{ .node }}\", \"cosId\": \"{{ .cosId }}\",\"geoip_city_name\": \"{{ .geoip_city_name}}\", \"geoip_country_code\": \"{{ .geoip_country_code }}\", \"geoip_as_org\": \"{{ .geoip_autonomous_system_organization }}\"}"
+            }
+
+            stage.output {
+               source = "PopConnMade_label"
+            }
+        }
+
+        stage.match {
+            selector = "{event!~\"PopConnMade|AcctPopNotAllowed\"}"
+            action = "drop"
+            drop_counter_reason = "non_essential_log"
+        }
+   }
+   loki.relabel "popserv_drop_label" {
+       rule {
+           action = "labeldrop"
+           regex  = "filename"
+       }
+       forward_to = argument.log_receiver.value
+   }
+}
+

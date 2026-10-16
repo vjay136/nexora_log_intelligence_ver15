@@ -1,0 +1,141 @@
+[transforms.filter_popserv_events]
+type = "filter"
+inputs = ["parse_popserv_log"]
+condition = '.event == "AcctUnknownUser" || .event == "AcctBadPswd" || .event == "SievePolicyLog" || .event == "PopConnMade" || .event == "AcctInactive"'
+
+[transforms.strip_log_level_popserv]
+type = "remap"
+inputs = ["filter_popserv_events"]
+source = '''
+    del(.log_level)
+'''
+
+[transforms.parse_popserv_log]
+type = "remap"
+inputs = ["popserv_logs"]
+source = '''
+    variable = r'^(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2}).(?P<hour>\d{2})(?P<min>\d{2})(?P<sec>\d{2})(?P<ms>\d{3}).(?P<timezone>\d{4}).(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?P<service>[A-Za-z]+).{1}(?P<pid>[0-9]+).{1}(?P<minor_pid>[0-9]+).{1}(?P<thread_id>[0-9]+).{1}(?P<log_level>[A-Za-z]+).{1}(?P<event>[A-Za-z0-9]+)\([^)]*\)\s(?<kv_string>.*)$';
+    m, err = parse_regex(.message, variable)
+    if err != null {
+       msg, _ = to_string(.message)
+       log("PARSE FAILED: " + msg, level: "error")
+       .parse_error = true
+    } else {
+         ts_str = to_string(m.year) + "-" +
+                  to_string(m.month) + "-" +
+                  to_string(m.day) + " " +
+                  to_string(m.hour) + ":" +
+                  to_string(m.min) + ":" +
+                  to_string(m.sec) + "." +
+                  to_string(m.ms) + " +" +
+                  to_string(m.timezone)
+         parsed = parse_timestamp!(ts_str, "%Y-%m-%d %H:%M:%S%.3f %z")
+         .ts = format_timestamp!(parsed, "%Y-%m-%d %H:%M:%S.%3f", timezone: "Europe/Dublin")
+         .event = m.event
+         .hostname = m.hostname
+         .service = m.service
+
+         # --- Case 1: leading "[ k=v k=v ... ]" block (e.g. SievePolicyLog) ---
+         kv_string = m.kv_string
+         bracket_fields = {}
+         message_fields = {}
+         bracket_match = parse_regex(kv_string, r'^\[\s*(?P<bracket>[^\]]*?)\s*\]:?(?P<rest>.*)$') ?? null
+         if bracket_match != null {
+             bracket_raw = to_string(bracket_match.bracket)
+             bracket_str = replace(bracket_raw, r'\s+', " ")
+             bracket_fields = parse_key_value(bracket_str, key_value_delimiter: "=", field_delimiter: " ") ?? {}
+             kv_string = to_string(bracket_match.rest)
+         } else {
+             # --- Case 2: leading free-text message before "key=value" starts (e.g SievePolicyExecute ) ---
+             message_match = parse_regex(kv_string, r'^(?P<message>[^=]*?)\s*:\s*(?P<rest>[A-Za-z0-9_]+=.*)$') ?? null
+             if message_match != null {
+                 raw_message = strip_whitespace(to_string(message_match.message))
+                 action_match = parse_regex(raw_message, r'^Sieve policy action\s+(?P<action>.*)$') ?? null
+                 if action_match != null {
+                     action_val = strip_whitespace(to_string(action_match.action))
+                     action_val = replace(action_val, r'\\3a', ":")
+                     #message_fields = { "action": action_val }
+                     split_match = parse_regex(action_val, r'^(?P<action_part>[^:]*?)\s*:\s*(?P<reason_part>.*)$') ?? null
+                     if split_match != null {
+                         message_fields = {
+                             "action": strip_whitespace(to_string(split_match.action_part)),
+                             "reason": strip_whitespace(to_string(split_match.reason_part))
+                        }
+                     } else {
+                         message_fields = { "action": action_val, "reason": "" }
+                     }
+                 } else {
+                     message_fields = { "action": raw_message }
+                 }
+                 kv_string = to_string(message_match.rest)
+             }
+         }
+         # --- end ---
+         structured = parse_key_value(kv_string, key_value_delimiter: "=", field_delimiter: ":") ?? {}
+         structured = merge(structured, bracket_fields)
+         structured = merge(structured, message_fields)
+
+             # --- Capture raw values before cleanup ---
+         raw_haproxy_port = structured.haProxyDstPort
+         raw_fromport = structured.fromport
+
+         # --- Remove raw/unused fields from structured ---
+         del(structured.haProxyDstPort)
+         del(structured.port)
+         del(structured.respcode)
+         del(structured.fromport)
+         del(structured.nodePort)
+
+         # --- Normalize haProxyDstPort (expected: 143, 993, or absent) ---
+         if raw_haproxy_port == null || raw_haproxy_port == "" {
+             .haProxyDstPort = null
+         } else {
+             hap_int, hap_err = to_int(raw_haproxy_port)
+             if hap_err == null {
+                 .haProxyDstPort = hap_int
+             } else {
+                 .haProxyDstPort = null
+             }
+         }
+
+         # --- Normalize fromport (source TCP port) ---
+         if raw_fromport == null || raw_fromport == "" {
+             .fromport = null
+         } else {
+             fp_int, fp_err = to_int(raw_fromport)
+             if fp_err == null {
+                 .fromport = fp_int
+             } else {
+                 .fromport = null
+             }
+         }
+
+         del(structured.haProxyDstPort)
+         del(structured.port)
+         del(structured.respcode)
+         del(structured.fromport)
+         del(structured.nodePort)
+
+         # geoip
+
+         ip_raw = to_string(structured.fromhost) ?? ""
+         ip = strip_whitespace(replace(to_string(ip_raw), "\"", ""))
+         if ip != "" {
+            node_info = get_enrichment_table_record("webmail_nodes", {"ip": ip}) ?? {}
+            if node_info != {} {
+                .geo_country = node_info.name
+                .asn_org = "Internal"
+            } else {
+                country = get_enrichment_table_record("geo_country", {"ip": ip}) ?? {}
+                asn = get_enrichment_table_record("geo_asn", {"ip": ip}) ?? {}
+                .geo_country = country.country.iso_code
+                .asn_org = asn.autonomous_system_organization
+                .asn = to_int(asn.autonomous_system_number) ?? 0
+            }
+         }
+
+
+         . = merge(structured, { "event": m.event , "service": m.service, "hostname": .hostname, "ts": .ts, "asn": .asn, "geoip_org": .asn_org, "geoip_country_code": .geo_country, "haProxyDstPort": .haProxyDstPort, "fromport": .fromport, "log_level": m.log_level})
+    }
+
+'''

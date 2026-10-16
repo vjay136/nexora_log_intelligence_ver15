@@ -1,0 +1,8 @@
+2026-10-02T10:00:01Z INFO Application started successfully
+2026-10-02T10:00:02Z ERROR Failed to process request
+java.lang.NullPointerException: Cannot invoke method on null object
+	at com.nexora.parser.LogProcessor.process(LogProcessor.java:42)
+	at com.nexora.parser.Main.main(Main.java:15)
+	... 3 more
+2026-10-02T10:00:03Z INFO Request processed: user=alice status=200
+2026-10-02T10:00:04Z WARN Database connection slow: latency=450ms threshold=200ms

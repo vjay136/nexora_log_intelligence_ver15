@@ -1,0 +1,177 @@
+{
+  "schema_version": 1,
+  "source_count": 16,
+  "handling": "Inert user-supplied references. NLI imports declarative behavior without executing source files; production packs remain reviewed, versioned, approval-gated, hash-verified, and rollback-capable.",
+  "supabase_sync": "The controller seeds catalog assets into the configured metadata store, including Supabase, and published asset revisions enter parser fleet synchronization.",
+  "entries": [
+    {
+      "status": "byte_identical_reference",
+      "source": "capd_processor.txt",
+      "sha256": "9f09660d64a9469c1aa102087d5d0e3133d23997e14ce665828f3a6fa8d7ac87",
+      "packs": [
+        "configs/parsers/nli-reviewed-mss-capd.parserpack.json"
+      ],
+      "fixture_sha256": "9f09660d64a9469c1aa102087d5d0e3133d23997e14ce665828f3a6fa8d7ac87",
+      "fixture": "capd-mss/capd_processor.alloy"
+    },
+    {
+      "status": "byte_identical_reference",
+      "source": "imap_parse.txt",
+      "sha256": "ebee96a564e0dd214fccc10c84826519c508791bd05a89d286e8901062fa4ceb",
+      "packs": [
+        "configs/parsers/nli-reviewed-imap.parserpack.json"
+      ],
+      "fixture_sha256": "ebee96a564e0dd214fccc10c84826519c508791bd05a89d286e8901062fa4ceb",
+      "fixture": "imap/imap_parse.toml"
+    },
+    {
+      "status": "byte_identical_reference",
+      "source": "imapserv_processor.txt",
+      "sha256": "1ac70be4cdb72b2a8c1c8f8d965cfa280945facc3805eae9f05b57ac6d12f99d",
+      "packs": [
+        "configs/parsers/nli-reviewed-imap.parserpack.json"
+      ],
+      "fixture_sha256": "1ac70be4cdb72b2a8c1c8f8d965cfa280945facc3805eae9f05b57ac6d12f99d",
+      "fixture": "imap/imapserv_processor.alloy"
+    },
+    {
+      "status": "byte_identical_reference",
+      "source": "main_imap_pop_mta_pabd_capd.txt",
+      "sha256": "65758781d889dd91c6ae2b330241411e55e2f2f0fe966c43f16871ca75d91f44",
+      "packs": [
+        "configs/parsers/nli-reviewed-imap.parserpack.json",
+        "configs/parsers/nli-reviewed-pop.parserpack.json",
+        "configs/parsers/nli-reviewed-mta.parserpack.json",
+        "configs/parsers/nli-reviewed-pss-pabd.parserpack.json",
+        "configs/parsers/nli-reviewed-mss-capd.parserpack.json"
+      ],
+      "fixture_sha256": "65758781d889dd91c6ae2b330241411e55e2f2f0fe966c43f16871ca75d91f44",
+      "fixture": "orchestration/main-combined.alloy"
+    },
+    {
+      "status": "byte_identical_reference",
+      "source": "main_smtp-in.txt",
+      "sha256": "ee40347d23038514551263b00e7763446d720d92ad550e4a32f5d729c8a6ccd8",
+      "packs": [
+        "configs/parsers/nli-reviewed-smtp-in.parserpack.json"
+      ],
+      "fixture_sha256": "ee40347d23038514551263b00e7763446d720d92ad550e4a32f5d729c8a6ccd8",
+      "fixture": "smtp-in/main.alloy"
+    },
+    {
+      "status": "byte_identical_reference",
+      "source": "main_smtp-out.txt",
+      "sha256": "e002a47d5c437a61c02c7bdfc06687bb07f27d59fee5af999524725a4beeed21",
+      "packs": [
+        "configs/parsers/nli-reviewed-smtp-out.parserpack.json"
+      ],
+      "fixture_sha256": "e002a47d5c437a61c02c7bdfc06687bb07f27d59fee5af999524725a4beeed21",
+      "fixture": "smtp-out/main.alloy"
+    },
+    {
+      "status": "byte_identical_reference",
+      "source": "main_webtop.txt",
+      "sha256": "cab586ec877a2f4c5037e86a998025349b87341f0f81573a3370632e3bfad4fb",
+      "packs": [
+        "configs/parsers/nli-reviewed-webtop-webmail.parserpack.json"
+      ],
+      "fixture_sha256": "cab586ec877a2f4c5037e86a998025349b87341f0f81573a3370632e3bfad4fb",
+      "fixture": "webtop-webmail/main.alloy"
+    },
+    {
+      "status": "byte_identical_reference",
+      "source": "main.txt",
+      "sha256": "65758781d889dd91c6ae2b330241411e55e2f2f0fe966c43f16871ca75d91f44",
+      "packs": [
+        "configs/parsers/nli-reviewed-imap.parserpack.json",
+        "configs/parsers/nli-reviewed-pop.parserpack.json",
+        "configs/parsers/nli-reviewed-mta.parserpack.json",
+        "configs/parsers/nli-reviewed-pss-pabd.parserpack.json",
+        "configs/parsers/nli-reviewed-mss-capd.parserpack.json"
+      ],
+      "fixture_sha256": "65758781d889dd91c6ae2b330241411e55e2f2f0fe966c43f16871ca75d91f44",
+      "fixture": "orchestration/main-duplicate.alloy"
+    },
+    {
+      "status": "byte_identical_reference",
+      "source": "mta_processor.txt",
+      "sha256": "f2940d4c893c6bf28c5ec058d82f0118546b258b94dd3a361121dc9fe1a3d8a0",
+      "packs": [
+        "configs/parsers/nli-reviewed-mta.parserpack.json"
+      ],
+      "fixture_sha256": "f2940d4c893c6bf28c5ec058d82f0118546b258b94dd3a361121dc9fe1a3d8a0",
+      "fixture": "mta/mta_processor.alloy"
+    },
+    {
+      "status": "byte_identical_reference",
+      "source": "pabd_processor.txt",
+      "sha256": "08f9c1ca5728a2a79f2d1aba6240684244e8b39e3062b1cd73c6d55e4c1b3bd6",
+      "packs": [
+        "configs/parsers/nli-reviewed-pss-pabd.parserpack.json"
+      ],
+      "fixture_sha256": "08f9c1ca5728a2a79f2d1aba6240684244e8b39e3062b1cd73c6d55e4c1b3bd6",
+      "fixture": "pabd-pss/pabd_processor.alloy"
+    },
+    {
+      "status": "byte_identical_reference",
+      "source": "pop_parse.txt",
+      "sha256": "27ddbbb14601bca17a561c760155045929033fb2331f9cf0674296cf7c08f533",
+      "packs": [
+        "configs/parsers/nli-reviewed-pop.parserpack.json"
+      ],
+      "fixture_sha256": "27ddbbb14601bca17a561c760155045929033fb2331f9cf0674296cf7c08f533",
+      "fixture": "pop/pop_parse.toml"
+    },
+    {
+      "status": "byte_identical_reference",
+      "source": "popserv_processor.txt",
+      "sha256": "830aeb1e269ab6720e55af2d35c045085090188423f59208966e12a06f5870c8",
+      "packs": [
+        "configs/parsers/nli-reviewed-pop.parserpack.json"
+      ],
+      "fixture_sha256": "830aeb1e269ab6720e55af2d35c045085090188423f59208966e12a06f5870c8",
+      "fixture": "pop/popserv_processor.alloy"
+    },
+    {
+      "status": "byte_identical_reference",
+      "source": "smtp-in_processor_for_another_platform_logs_universal.txt",
+      "sha256": "9e8f5e07b75125b02df983bbb4c88973b38297aff71ba4a7690db0d8d90e3e27",
+      "packs": [
+        "configs/parsers/nli-reviewed-smtp-in.parserpack.json"
+      ],
+      "fixture_sha256": "9e8f5e07b75125b02df983bbb4c88973b38297aff71ba4a7690db0d8d90e3e27",
+      "fixture": "smtp-in/smtp-in_universal.alloy"
+    },
+    {
+      "status": "byte_identical_reference",
+      "source": "smtp-in_processor.txt",
+      "sha256": "c824e6d8bdcff359ec2714ebf3d7d3875aa9270442e20dbf896e1b3ca99cd8c6",
+      "packs": [
+        "configs/parsers/nli-reviewed-smtp-in.parserpack.json"
+      ],
+      "fixture_sha256": "c824e6d8bdcff359ec2714ebf3d7d3875aa9270442e20dbf896e1b3ca99cd8c6",
+      "fixture": "smtp-in/smtp-in_processor.alloy"
+    },
+    {
+      "status": "reviewed_minimal_repair",
+      "repair": "smtp-out/smtp-out_processor.repair.json",
+      "source": "smtp-out_processor.txt",
+      "sha256": "5daaf08766af0a6dc4327db79bdf689dd7df5a7fd9bdf35fb8233fa869b43332",
+      "packs": [
+        "configs/parsers/nli-reviewed-smtp-out.parserpack.json"
+      ],
+      "fixture_sha256": "24ab85c72bb752a0d39c5be9d0096ffd0b8dd1ec2c6e30fa61af5dd2b8adc04f",
+      "fixture": "smtp-out/smtp-out_processor.alloy"
+    },
+    {
+      "status": "byte_identical_reference",
+      "source": "webtop_processor.txt",
+      "sha256": "75f921c558463bf110fdb249322f2d4e59c8c398849b95280ff928bce441b7d8",
+      "packs": [
+        "configs/parsers/nli-reviewed-webtop-webmail.parserpack.json"
+      ],
+      "fixture_sha256": "75f921c558463bf110fdb249322f2d4e59c8c398849b95280ff928bce441b7d8",
+      "fixture": "webtop-webmail/webtop_processor.alloy"
+    }
+  ]
+}

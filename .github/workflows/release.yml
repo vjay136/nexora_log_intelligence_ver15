@@ -1,0 +1,92 @@
+name: NLI V13 release
+
+on:
+  push:
+    branches: [main]
+    tags: ['v13.*']
+  pull_request:
+    paths:
+      - 'packaging/**'
+      - 'scripts/release/**'
+      - 'tests/release/**'
+      - 'tests/rocky/**'
+      - 'Makefile'
+      - '.github/workflows/release.yml'
+  workflow_dispatch:
+    inputs:
+      previous_release_tag:
+        description: 'Existing release tag in this repository containing genuine previous client/controller RPMs'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  infrastructure-static:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - name: Validate release infrastructure
+        env:
+          NLI_BUILD_SCRATCH: ${{ runner.temp }}
+        run: make release-static
+      - name: Test Go and Web contracts
+        run: |
+          go test ./...
+          npm run web:check
+      - name: Prove deterministic RPM and evidence pipeline
+        env:
+          NLI_BUILD_SCRATCH: ${{ runner.temp }}
+        run: make release-package-test
+
+
+  release-candidate:
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v13.')
+    needs: infrastructure-static
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          fetch-depth: 0
+      - name: Build reproducible release
+        env:
+          NLI_BUILD_SCRATCH: ${{ runner.temp }}
+        run: make release-build OUTPUT_DIR='${{ runner.temp }}/nli-release'
+      - name: Download genuine previous release RPMs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_RELEASE_TAG: ${{ inputs.previous_release_tag || 'v9.0.0-5' }}
+        run: |
+          mkdir -p '${{ runner.temp }}/previous'
+          if gh release download "$PREVIOUS_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+              --pattern '*.rpm' --dir '${{ runner.temp }}/previous'; then
+            echo 'REQUIRE_PREVIOUS=1' >> "$GITHUB_ENV"
+          else
+            echo 'The previous tag has no published RPM assets; running fresh-install and two-node acceptance.'
+            echo 'REQUIRE_PREVIOUS=0' >> "$GITHUB_ENV"
+          fi
+      - name: Validate Rocky 9 and Rocky 10.2 lifecycle
+        env:
+          NLI_BUILD_SCRATCH: ${{ runner.temp }}
+        run: make release-rocky OUTPUT_DIR='${{ runner.temp }}/nli-release' PREVIOUS_DIR='${{ runner.temp }}/previous'
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: nli-v13-unsigned-release
+          path: ${{ runner.temp }}/nli-release/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Publish V13 GitHub release
+        if: startsWith(github.ref, 'refs/tags/v13.')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" '${{ runner.temp }}/nli-release/'* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "Nexora Log Inetelligence Ver13 — $GITHUB_REF_NAME" \
+            --notes-file docs/release/README.md \
+            --latest

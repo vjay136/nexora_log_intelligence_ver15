@@ -1,0 +1,12 @@
+[sources.webtop_sample]
+type = "file"
+include = ["/var/log/webtop-sample.log"]
+
+[transforms.parse_webtop_sample]
+type = "remap"
+inputs = ["webtop_sample"]
+source = '''
+parsed = parse_regex(., r'^(?P<date>\d{4}-\d{2}-\d{2})\s+(?P<time>\d{2}:\d{2}:\d{2}:\d{3}[+-]\d{4})\s+(?P<kv_tail>.*)$')
+structured = parse_key_value(.kv_tail, key_value_delimiter: "=", field_delimiter: " ")
+del(.kv_tail)
+'''

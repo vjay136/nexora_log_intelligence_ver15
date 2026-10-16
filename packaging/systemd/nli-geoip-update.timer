@@ -1,0 +1,11 @@
+[Unit]
+Description=Nexora Log Intelligence - Daily GeoIP Candidate Check
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=6h
+Unit=nli-geoip-update.service
+
+[Install]
+WantedBy=timers.target

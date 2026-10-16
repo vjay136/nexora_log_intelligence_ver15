@@ -1,0 +1,228 @@
+[transforms.filter_imapserv_events]
+type = "filter"
+inputs = ["parse_imapserv_log"]
+#condition = '.event == "AcctUnknownUser" || .event == "AcctBadPswd" || .event == "SievePolicyLog" || (.event == "SievePolicyExecute" && .log_level == "Warn") || .event == "ImapConnMade" || (.event == "MsgTrace" && .action == "search" && (.task == "legacy" || .task == "mixed"))'
+condition = '.event == "AcctUnknownUser" || .event == "AcctBadPswd" || .event == "SievePolicyLog" || .event == "ImapConnMade" || (.event == "MsgTrace" && .action == "search" && (.task == "legacy" || .task == "mixed"))'
+
+[transforms.strip_log_level_imapserv]
+type = "remap"
+inputs = ["filter_imapserv_events"]
+source = '''
+    del(.log_level)
+'''
+
+[transforms.parse_imapserv_log]
+type = "remap"
+inputs = ["imapserv_logs"]
+source = '''
+    variable = r'^(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2}).(?P<hour>\d{2})(?P<min>\d{2})(?P<sec>\d{2})(?P<ms>\d{3}).(?P<timezone>\d{4}).(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?P<service>[A-Za-z]+).{1}(?P<pid>[0-9]+).{1}(?P<minor_pid>[0-9]+).{1}(?P<thread_id>[0-9]+).{1}(?P<log_level>[A-Za-z]+).{1}(?P<event>[A-Za-z0-9]+)\([^)]*\)\s(?<kv_string>.*)$';
+    m, err = parse_regex(.message, variable)
+    if err != null {
+       msg, _ = to_string(.message)
+       log("PARSE FAILED: " + msg, level: "error")
+       .parse_error = true
+    } else {
+         ts_str = to_string(m.year) + "-" +
+                  to_string(m.month) + "-" +
+                  to_string(m.day) + " " +
+                  to_string(m.hour) + ":" +
+                  to_string(m.min) + ":" +
+                  to_string(m.sec) + "." +
+                  to_string(m.ms) + " +" +
+                  to_string(m.timezone)
+         parsed = parse_timestamp!(ts_str, "%Y-%m-%d %H:%M:%S%.3f %z")
+         .ts = format_timestamp!(parsed, "%Y-%m-%d %H:%M:%S.%3f", timezone: "Europe/Dublin")
+         .event = m.event
+         .hostname = m.hostname
+         .service = m.service
+
+
+         # --- Case 1: leading "[ k=v k=v ... ]" block (e.g. SievePolicyLog) ---
+         kv_string = m.kv_string
+         bracket_fields = {}
+         message_fields = {}
+         bracket_match = parse_regex(kv_string, r'^\[\s*(?P<bracket>[^\]]*?)\s*\]:?(?P<rest>.*)$') ?? null
+         if bracket_match != null {
+             bracket_raw = to_string(bracket_match.bracket)
+             bracket_str = replace(bracket_raw, r'\s+', " ")
+             bracket_fields = parse_key_value(bracket_str, key_value_delimiter: "=", field_delimiter: " ") ?? {}
+             kv_string = to_string(bracket_match.rest)
+         } else {
+             # --- Case 2: leading free-text message before "key=value" starts (e.g SievePolicyExecute ) ---
+             message_match = parse_regex(kv_string, r'^(?P<message>[^=]*?)\s*:\s*(?P<rest>[A-Za-z0-9_]+=.*)$') ?? null
+             if message_match != null {
+                 raw_message = strip_whitespace(to_string(message_match.message))
+                 action_match = parse_regex(raw_message, r'^Sieve policy action\s+(?P<action>.*)$') ?? null
+                 if action_match != null {
+                     action_val = strip_whitespace(to_string(action_match.action))
+                     action_val = replace(action_val, r'\\3a', ":")
+                     #message_fields = { "action": action_val }
+                     split_match = parse_regex(action_val, r'^(?P<action_part>[^:]*?)\s*:\s*(?P<reason_part>.*)$') ?? null
+                     if split_match != null {
+                         message_fields = {
+                             "action": strip_whitespace(to_string(split_match.action_part)),
+                             "reason": strip_whitespace(to_string(split_match.reason_part))
+                        }
+                     } else {
+                         message_fields = { "action": action_val, "reason": "" }
+                     }
+                 } else {
+                     message_fields = { "action": raw_message }
+                 }
+                 kv_string = to_string(message_match.rest)
+             }
+         }
+         # --- end ---
+
+         structured = parse_key_value(kv_string, key_value_delimiter: "=", field_delimiter: ":") ?? {}
+         structured = merge(structured, bracket_fields)
+         structured = merge(structured, message_fields)
+
+        # --- Capture raw values before cleanup ---
+         raw_haproxy_port = structured.haProxyDstPort
+         raw_fromport = structured.fromport
+         raw_mbox = structured.mbox
+         raw_mss = structured.mss
+         raw_node = structured.node
+         raw_cosid = structured.cosId
+         raw_attempts = structured.attempts
+         raw_success = structured.success
+         raw_fail = structured.fail
+         raw_unknown = structured.unknown
+
+         # --- Remove raw/unused fields from structured ---
+         del(structured.haProxyDstPort)
+         del(structured.port)
+         del(structured.respcode)
+         del(structured.fromport)
+         del(structured.nodePort)
+         del(structured.mbox)
+         del(structured.mss)
+         del(structured.node)
+         del(structured.cosId)
+         del(structured.attempts)
+         del(structured.success)
+         del(structured.fail)
+         del(structured.unknown)
+
+         # --- Normalize haProxyDstPort (expected: 143, 993, or absent) ---
+         if raw_haproxy_port == null || raw_haproxy_port == "" {
+             .haProxyDstPort = null
+         } else {
+             hap_int, hap_err = to_int(raw_haproxy_port)
+             if hap_err == null {
+                 .haProxyDstPort = hap_int
+             } else {
+                 .haProxyDstPort = null
+             }
+         }
+
+         # --- Normalize fromport (source TCP port) ---
+         if raw_fromport == null || raw_fromport == "" {
+             .fromport = null
+         } else {
+             fp_int, fp_err = to_int(raw_fromport)
+             if fp_err == null {
+                 .fromport = fp_int
+             } else {
+                 .fromport = null
+             }
+         }
+
+         # --- Normalize mbox (mailbox ID as string ---
+         if raw_mbox == null || raw_mbox == "" {
+             .mbox = null
+         } else {
+             mbox_str, mbox_err = to_string(raw_mbox)
+             if mbox_err == null {
+                 .mbox = mbox_str
+             } else {
+                 .mbox = null
+             }
+         }
+
+         # --- Normalize mss (string) ---
+         if raw_mss == null || raw_mss == "" {
+             .mss = null
+         } else {
+             mss_str, mss_err = to_string(raw_mss)
+             if mss_err == null {
+                 .mss = mss_str
+             } else {
+                 .mss = null
+             }
+         }
+
+         # --- Normalize node (string) ---
+         if raw_node == null || raw_node == "" {
+             .node = null
+         } else {
+             node_str, node_err = to_string(raw_node)
+             if node_err == null {
+                 .node = node_str
+             } else {
+                 .node = null
+             }
+         }
+
+         if raw_cosid == null || raw_cosid == "" {
+             .cosid = null
+         } else {
+             cosid_str, cosid_err = to_string(raw_cosid)
+             if cosid_err == null {
+                 .cosid = cosid_str
+             } else {
+                 .cosid = null
+             }
+         }
+
+         .imapTag = split(structured.cmd, " ")[0] ?? null
+
+         if raw_attempts == null || raw_attempts == "" {
+             .attempts = null
+         } else {
+             attempts_int, attempts_err = to_int(raw_attempts)
+             .attempts = if attempts_err == null { attempts_int } else { null }
+         }
+
+         if raw_success == null || raw_success == "" {
+             .success = null
+         } else {
+             success_int, success_err = to_int(raw_success)
+             .success = if success_err == null { success_int } else { null }
+         }
+
+         if raw_fail == null || raw_fail == "" {
+             .fail = null
+         } else {
+             fail_int, fail_err = to_int(raw_fail)
+             .fail = if fail_err == null { fail_int } else { null }
+         }
+
+         if raw_unknown == null || raw_unknown == "" {
+             .unknown = null
+         } else {
+             unknown_int, unknown_err = to_int(raw_unknown)
+             .unknown = if unknown_err == null { unknown_int } else { null }
+         }
+
+         # geoip
+         ip_raw = to_string(structured.fromhost) ?? ""
+         ip = strip_whitespace(replace(to_string(ip_raw), "\"", ""))
+         if ip != "" {
+            node_info = get_enrichment_table_record("webmail_nodes", {"ip": ip}) ?? {}
+            if node_info != {} {
+                .geo_country = node_info.name
+                .asn_org = "Internal"
+            } else {
+                country = get_enrichment_table_record("geo_country", {"ip": ip}) ?? {}
+                asn = get_enrichment_table_record("geo_asn", {"ip": ip}) ?? {}
+                .geo_country = country.country.iso_code
+                .asn_org = asn.autonomous_system_organization
+                .asn = to_int(asn.autonomous_system_number) ?? 0
+            }
+         }
+
+         . = merge(structured, { "event": m.event , "service": m.service, "hostname": .hostname, "ts": .ts, "imapTag": .imapTag , "asn": .asn, "geoip_org": .asn_org, "geoip_country_code": .geo_country, "haProxyDstPort": .haProxyDstPort, "fromport": .fromport, "mbox": .mbox, "mss": .mss, "node": .node, "cosId": .cosid, "attempts": .attempts, "success": .success, "fail": .fail, "unknown": .unknown, "log_level": m.log_level})
+    }
+'''

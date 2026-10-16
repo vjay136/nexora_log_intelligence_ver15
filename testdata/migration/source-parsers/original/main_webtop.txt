@@ -1,0 +1,21 @@
+logging {
+    level  = "info"
+    format = "json"
+}
+
+import.file "webtop_processor" {
+  filename = "/etc/alloy/bt-alloy/webtop_processor.alloy"
+}
+
+webtop_processor.webtop_filter "webtop_log_processing" {
+    logfilename = "/opt/imail/log/webtop/mail/analytics.log"
+    log_receiver = [loki.write.prd_endpoint.receiver]
+}
+
+loki.write "prd_endpoint" {
+    endpoint {
+        url = "https://loki-aa-test-deployed-domain.com/loki/api/v1/push"
+        max_backoff_retries = 5
+    }
+    external_labels = {}
+}

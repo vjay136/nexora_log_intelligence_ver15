@@ -1,0 +1,447 @@
+{
+  "schema_version": 3,
+  "oracle": "Expected field subsets and exclusions were independently reasoned from raw records; importer output was not used to generate them.",
+  "grammar_coverage": [
+    "native parenthesized header with direct colon/equal key-value tail",
+    "native parenthesized header with free-text prefix before key-value data",
+    "quoted WEBTOP/WEBMAIL space-delimited logfmt",
+    "PABD DAV header without an event code and with request text",
+    "CAPD DAV header without an event code, with and without optional fields",
+    "SMTP nested pipe-separated fields using semicolon assignment delimiters",
+    "parser-policy reserved metadata keys are explicitly excluded",
+    "contract-allowlisted leading text with quote and bracket awareness",
+    "reserved customer fields preserved through deterministic input.* aliases",
+    "base64, message text, email local parts, and unkeyed reply fragments remain values"
+  ],
+  "records": [
+    {
+      "family": "IMAP",
+      "source_line": 2,
+      "description": "free-text proxy description before key-value data",
+      "expected_fields": {
+        "date": "20250320",
+        "event": "NioUpstreamProxyConnectionInfo",
+        "code": "73/65",
+        "service": "imapserv"
+      }
+    },
+    {
+      "family": "IMAP",
+      "source_line": 3,
+      "description": "notification description containing escaped colon and dotted key",
+      "expected_fields": {
+        "date": "20250320",
+        "event": "ImapNotificationInfo",
+        "code": "56/45"
+      }
+    },
+    {
+      "family": "IMAP",
+      "source_line": 9,
+      "description": "nested diagnostic object stays in leading text while top-level assignments are extracted",
+      "expected_fields": {
+        "event": "UserDataException",
+        "code": "504/1",
+        "hostname": "server001",
+        "user": "demouser@sample.com",
+        "haProxyDstPort": "993"
+      },
+      "absent_fields": [
+        "email",
+        "protocolType",
+        "srcAddress",
+        "password"
+      ]
+    },
+    {
+      "family": "IMAP",
+      "source_line": 10,
+      "description": "direct colon/equal authentication fields",
+      "expected_fields": {
+        "event": "AcctBadPswd",
+        "user": "demouser@sample.com",
+        "respcode": "NO",
+        "haProxyDstPort": "993"
+      }
+    },
+    {
+      "family": "IMAP",
+      "source_line": 36,
+      "description": "connection record skips an unkeyed mailbox number and resumes at reviewed assignments",
+      "expected_fields": {
+        "event": "ImapConnMade",
+        "mss": "aaa-gmail02",
+        "nodePort": "55014",
+        "haProxyDstPort": "993"
+      }
+    },
+    {
+      "family": "POP",
+      "source_line": 56,
+      "description": "bad-password event",
+      "expected_fields": {
+        "event": "AcctBadPswd",
+        "user": "demouser@sample.com",
+        "resptime": "307"
+      }
+    },
+    {
+      "family": "POP",
+      "source_line": 57,
+      "description": "connection event with mailbox suffix",
+      "expected_fields": {
+        "event": "PopConnMade",
+        "mss": "aaa-gmail03",
+        "respcode": "OK",
+        "nodePort": "55014"
+      }
+    },
+    {
+      "family": "POP",
+      "source_line": 58,
+      "description": "connection record with an unkeyed mailbox number between assignments",
+      "expected_fields": {
+        "event": "PopConnMade",
+        "mss": "aaa-gmail03",
+        "nodePort": "55014",
+        "haProxyDstPort": "110"
+      }
+    },
+    {
+      "family": "POP",
+      "source_line": 60,
+      "description": "quit event with elapsed time",
+      "expected_fields": {
+        "event": "PopConnQuit",
+        "cmd": "QUIT",
+        "fromport": "65178"
+      }
+    },
+    {
+      "family": "WEBTOP/WEBMAIL",
+      "source_line": 68,
+      "description": "mail API quoted logfmt",
+      "expected_fields": {
+        "date": "2025-07-22",
+        "api": "mail",
+        "service": "paf",
+        "action": "readSortedMsgs"
+      }
+    },
+    {
+      "family": "WEBTOP/WEBMAIL",
+      "source_line": 69,
+      "description": "mxos API with empty quoted fields",
+      "expected_fields": {
+        "api": "mxos",
+        "email": "n/a",
+        "sessionid": "",
+        "duration": "1"
+      }
+    },
+    {
+      "family": "WEBTOP/WEBMAIL",
+      "source_line": 79,
+      "description": "webtop API with remote port and application",
+      "expected_fields": {
+        "api": "webtop",
+        "remoteport": "26514",
+        "application": "RichUI",
+        "method": "mail.message.list"
+      }
+    },
+    {
+      "family": "WEBTOP/WEBMAIL",
+      "source_line": 81,
+      "description": "quoted browser user-agent keeps semicolon words inside its value",
+      "expected_fields": {
+        "remoteport": "33014",
+        "application": "RichUI",
+        "method": "mail.message.list",
+        "usercosid": "free_signin"
+      },
+      "absent_fields": [
+        "Win64",
+        "x64"
+      ]
+    },
+    {
+      "family": "MTA",
+      "source_line": 91,
+      "description": "direct domain table fields",
+      "expected_fields": {
+        "event": "MtaRequestingDomainTableUpdate",
+        "fromhost": "[11.22.33.44]",
+        "localAddr": "11.22.33.44"
+      }
+    },
+    {
+      "family": "MTA",
+      "source_line": 93,
+      "description": "free-text docid description before fields",
+      "expected_fields": {
+        "event": "MsgTrace",
+        "code": "65/26",
+        "service": "mta"
+      }
+    },
+    {
+      "family": "MTA",
+      "source_line": 96,
+      "description": "received-from-internet description before fields",
+      "expected_fields": {
+        "event": "MsgTrace",
+        "hostname": "server001",
+        "event_type": "Note"
+      }
+    },
+    {
+      "family": "MTA",
+      "source_line": 97,
+      "description": "delivered record skips an unkeyed numeric token and resumes at reviewed assignments",
+      "expected_fields": {
+        "event": "MsgTrace",
+        "mss": "aaa-gmail3mss010",
+        "docid": "84c70342-1c5f-11f1-bb60-aeb25639f088",
+        "nodePort": "55014"
+      }
+    },
+    {
+      "family": "PSS/PABD",
+      "source_line": 112,
+      "description": "HTTP challenge request text between id and fields",
+      "expected_fields": {
+        "event": "CARDDAV",
+        "method": "1",
+        "realm": "mx",
+        "address": "11.22.33.44"
+      }
+    },
+    {
+      "family": "PSS/PABD",
+      "source_line": 113,
+      "description": "proxied CardDAV request with client agent",
+      "expected_fields": {
+        "event": "CARDDAV",
+        "user": "demouser@sample.com/main",
+        "depth": "1",
+        "code": "207"
+      }
+    },
+    {
+      "family": "PSS/PABD",
+      "source_line": 114,
+      "description": "DAV user-agent retains semicolon platform fragments as one value",
+      "expected_fields": {
+        "event": "CARDDAV",
+        "user": "demouser@sample.com/main",
+        "user-agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv\\3a149.0) Gecko/20100101 Thunderbird/149.0.1",
+        "code": "207"
+      },
+      "absent_fields": [
+        "Win64",
+        "x64"
+      ]
+    },
+    {
+      "family": "PSS/PABD",
+      "source_line": 123,
+      "description": "direct OPTIONS result fields",
+      "expected_fields": {
+        "event": "CARDDAV",
+        "type": "OPTIONS",
+        "status": "OK",
+        "resp_size": "0"
+      }
+    },
+    {
+      "family": "MSS/CAPD",
+      "source_line": 128,
+      "description": "CalDAV response with depth and status fields",
+      "expected_fields": {
+        "event": "CalDavResponse",
+        "username": "m.robarts@sample.com",
+        "depth": "0",
+        "status": "Multi-status"
+      }
+    },
+    {
+      "family": "MSS/CAPD",
+      "source_line": 129,
+      "description": "CalDAV OPTIONS response without depth",
+      "expected_fields": {
+        "event": "CalDavResponse",
+        "username": "andrea.fall@sample.com",
+        "http_code": "200",
+        "status": "OK"
+      }
+    },
+    {
+      "family": "MSS/CAPD",
+      "source_line": 130,
+      "description": "CalDAV response with client address and no status tail",
+      "expected_fields": {
+        "event": "CalDavResponse",
+        "depth": "1",
+        "client_address": "11.22.33.44",
+        "error_id": "0"
+      }
+    },
+    {
+      "family": "MSS/CAPD",
+      "source_line": 131,
+      "description": "complete CalDAV response preserves user-agent and terminal response fields",
+      "expected_fields": {
+        "event": "CalDavResponse",
+        "username": "peter.bartrop@sample.com",
+        "user-agent": "iOS/26.3.1 (23D8133) remindd/3900.1",
+        "status": "Multi-status",
+        "resp_size": "1089"
+      }
+    },
+    {
+      "family": "SMTP-IN",
+      "source_line": 143,
+      "description": "nested MISREPORT pipe fields with semicolon assignment",
+      "expected_fields": {
+        "event": "SieveRuleMsg",
+        "policy": "INBOUND",
+        "action": "keep",
+        "geo": "US",
+        "vade_score": "17"
+      }
+    },
+    {
+      "family": "SMTP-IN",
+      "source_line": 150,
+      "description": "base64 subject and padding remain the exact value payload",
+      "expected_fields": {
+        "event": "SieveRuleMsg",
+        "value": "=?utf-8?B?SSBtdXN0IHRlbGwgeW91IHNvbWV0aGluZw==?=",
+        "spamcount": "68"
+      },
+      "absent_fields": [
+        "SSBtdXN0IHRlbGwgeW91IHNvbWV0aGluZw"
+      ]
+    },
+    {
+      "family": "SMTP-IN",
+      "source_line": 174,
+      "description": "word followed by equals inside message text is not promoted to a key",
+      "expected_fields": {
+        "event": "SieveRuleMsg",
+        "value": "Skip NHS waiting queues with healthinsurance=?UTF-8?Q?=E2=80=A6?=it=?UTF-8?Q?=E2=80=99?=s a doddle",
+        "antispam": "spam-confirmed-500/320"
+      },
+      "absent_fields": [
+        "healthinsurance"
+      ]
+    },
+    {
+      "family": "SMTP-IN",
+      "source_line": 244,
+      "description": "logging header with repeated equals in id value",
+      "expected_fields": {
+        "event": "LoggingHeader",
+        "version": "5.8.826"
+      }
+    },
+    {
+      "family": "SMTP-IN",
+      "source_line": 262,
+      "description": "equals inside an email local part remains in the originator value",
+      "expected_fields": {
+        "event": "SmtpClientRelayOriginator",
+        "originator": "bounces+19006347-64c9-us.eyejay=sample.com@em9336.email.etonshirts.com",
+        "size": "127464"
+      }
+    },
+    {
+      "family": "SMTP-IN",
+      "source_line": 276,
+      "description": "simple SMTP connection fields",
+      "expected_fields": {
+        "event": "SmtpServerConnect",
+        "host": "11.22.33.44",
+        "connection_count": "1",
+        "local_port": "2525"
+      }
+    },
+    {
+      "family": "SMTP-IN",
+      "source_line": 332,
+      "description": "DMARC fields preserve reserved source and envelope values under safe aliases",
+      "expected_fields": {
+        "event": "AntiAbuseDmarcAggregateReportData",
+        "dkim": "pass",
+        "SPFDomain": "ea.guardian-angel-reading.com",
+        "override": "other",
+        "input.source": "11.22.33.44",
+        "input.envelope": "bounce@ea.guardian-angel-reading.com"
+      },
+      "absent_fields": [
+        "source",
+        "envelope"
+      ]
+    },
+    {
+      "family": "SMTP-OUT",
+      "source_line": 575,
+      "description": "outbound logging header",
+      "expected_fields": {
+        "event": "LoggingHeader",
+        "version": "5.8.826"
+      }
+    },
+    {
+      "family": "SMTP-OUT",
+      "source_line": 577,
+      "description": "outbound SMTP connection",
+      "expected_fields": {
+        "event": "SmtpServerConnect",
+        "host": "11.22.33.44",
+        "connection_count": "1"
+      }
+    },
+    {
+      "family": "SMTP-OUT",
+      "source_line": 594,
+      "description": "DKIM signing preserves the reserved source value under a safe alias",
+      "expected_fields": {
+        "event": "SmtpClientDKIMSign",
+        "domain": "sample.com",
+        "algorithm": "rsa-sha256",
+        "input.source": "header"
+      },
+      "absent_fields": [
+        "source"
+      ]
+    },
+    {
+      "family": "SMTP-OUT",
+      "source_line": 596,
+      "description": "nested outbound MISREPORT authentication counters",
+      "expected_fields": {
+        "event": "SieveRuleMsg",
+        "policy": "OUTBOUND",
+        "action": "reject",
+        "reason": "AUTH_95_IP_MEDIUM",
+        "auth_fail": 717,
+        "auth_tries": 717
+      }
+    },
+    {
+      "family": "SMTP-OUT",
+      "source_line": 602,
+      "description": "bracketed relay reply metadata remains unkeyed reply text",
+      "expected_fields": {
+        "event": "SmtpClientRelayOriginator",
+        "reply": "250 2.6.0 <DD8BEDE6-4206-4AE8-B5D1-46CF517E9B71@sample.com> [InternalId=53807350284579, Hostname=LOYP123MB3470.GBRP123.PROD.OUTLOOK.COM] 88108 bytes in 0.102, 835.774 KB/sec Queued mail for delivery"
+      },
+      "absent_fields": [
+        "InternalId",
+        "Hostname"
+      ]
+    }
+  ]
+}

@@ -1,0 +1,66 @@
+logging {
+    level  = "info"
+    format = "json"
+}
+
+// IMAP
+import.file "imapserv_processor" {
+  filename = "/etc/alloy/bt-alloy/imapserv_processor.alloy"
+}
+
+imapserv_processor.imapserv_filter "imapserv_log_processing" {
+    logfilename = "/opt/imail/log/imapserv.log"
+    log_receiver = [loki.write.prd_endpoint.receiver]
+}
+
+// POP
+import.file "popserv_processor" {
+  filename = "/etc/alloy/bt-alloy/popserv_processor.alloy"
+}
+
+popserv_processor.popserv_filter "popserv_log_processing" {
+    logfilename = "/opt/imail/log/popserv.log"
+    log_receiver = [loki.write.prd_endpoint.receiver]
+}
+
+// MTA
+import.file "mta_processor" {
+  filename = "/etc/alloy/bt-alloy/mta_processor.alloy"
+}
+
+
+mta_processor.mta_filter "mta_log_processing" {
+    logfilename = "/opt/imail/log/mta.log"
+    log_receiver = [loki.write.prd_endpoint.receiver]
+}
+
+// PABD
+import.file "pabd_processor" {
+  filename = "/etc/alloy/bt-alloy/pabd_processor.alloy"
+}
+
+
+pabd_processor.pabd_filter "pabd_log_processing" {
+    logfilename = "/opt/imail/log/pabd.log"
+    log_receiver = [loki.write.prd_endpoint.receiver]
+}
+
+// CAPD
+import.file "capd_processor" {
+  filename = "/etc/alloy/bt-alloy/capd_processor.alloy"
+}
+
+
+capd_processor.capd_filter "capd_log_processing" {
+    logfilename = "/opt/imail/log/capd.log"
+    log_receiver = [loki.write.prd_endpoint.receiver]
+}
+
+loki.write "prd_endpoint" {
+    endpoint {
+        url = "https://loki-aa-test-deployed-domain.com/loki/api/v1/push"
+        max_backoff_retries = 5
+    }
+    external_labels = {}
+}
+

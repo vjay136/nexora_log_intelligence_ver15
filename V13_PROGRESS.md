@@ -1,0 +1,54 @@
+# NLI V13 engineering status
+
+## Objective
+
+V13 preserves the complete V12 feature set and adds deployment paths for two
+AWS Red Hat nodes:
+
+- a controller and clients communicating over private VPC addressing and the
+  controller's private TLS identity;
+- a named Cloudflare Tunnel exposing the controller through a stable public
+  HTTPS hostname;
+- a Vercel-hosted WebApp proxy using that public hostname through the
+  server-only `NLI_CONTROLLER_ORIGIN` variable;
+- direct browser access to the controller WebView through the same Cloudflare
+  hostname;
+- an optional temporary Quick Tunnel for diagnostics only.
+
+Existing local, private-network, corporate-certificate, reverse-proxy and
+manual installation paths remain supported. AWS and Cloudflare are additional
+paths rather than replacements.
+
+## Network contract
+
+The controller continues to listen on TCP 12382. Clients inside the VPC reach
+that port through a controller security-group rule whose source is the client
+security group. A named Cloudflare Tunnel runs on the controller and makes
+outbound connections to Cloudflare; it does not require public inbound access
+to TCP 12382. SSH is limited to the operator's administration source.
+
+Vercel never receives a private EC2 address, a `.compute.internal` hostname,
+controller certificate keys, enrollment tokens, or Supabase service secrets.
+It receives one server-only value:
+
+```text
+NLI_CONTROLLER_ORIGIN=https://nli-controller.example.com
+```
+
+## Release gates
+
+- version and release assets identify V13 consistently;
+- shell scripts pass syntax and static policy checks;
+- Go and web contract tests pass;
+- Vercel and Cloudflare proxy tests pass;
+- RPM build, artifact verification, and Rocky lifecycle tests pass;
+- AWS and Cloudflare setup scripts pass offline fixture tests;
+- no dotenv file, tunnel token, private key, enrollment token, or Supabase
+  secret is committed or packaged into public WebApp assets;
+- GitHub main and tagged-release workflows pass before the release is called
+  verified.
+
+## Current state
+
+Implementation in progress. This file must be updated with immutable commit,
+release tag, artifact hashes, and final validation results before publication.

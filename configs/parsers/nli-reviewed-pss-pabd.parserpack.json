@@ -1,0 +1,152 @@
+{
+  "id": "nli_reviewed_pss_pabd",
+  "version": "5.0.0",
+  "revision": 1,
+  "sha256": "34ced22638e86ac62541902567a8ac9d7afd499ab1d46ed0e26cf6950784c9ab",
+  "source_type": "manual",
+  "source_hash": "04581c2f4414291c7a25bcbd29f1acca1ebca2eb3f591b9c0446ae3b5775ea1e",
+  "author": "nexora-parser-review-board",
+  "review_state": "activated",
+  "created_at": "2026-10-05T00:00:00Z",
+  "activated_at": "2026-10-05T00:00:00Z",
+  "rules": [
+    {
+      "id": "reviewed_pss_pabd",
+      "name": "Reviewed PSS/PABD family profile",
+      "priority": 140,
+      "service_selectors": [
+        "pabd",
+        "pss"
+      ],
+      "stages": [
+        {
+          "id": "family_header",
+          "name": "Reviewed DAV family header",
+          "type": "regex",
+          "config": {
+            "pattern": "^(?P\u003cdate\u003e\\d{8})\\s+(?P\u003ctime\u003e\\d{9}[+-]\\d{4})\\s+(?P\u003chostname\u003e\\S+)\\s+(?P\u003cservice\u003e\\S+)\\s+(?P\u003cmajor_pid\u003e\\d+)\\s+(?P\u003cpid_status\u003e\\d+)\\s+(?P\u003cminor_pid\u003e\\d+)\\s+(?P\u003cevent_type\u003e[A-Za-z]+);(?P\u003cevent\u003eCARDDAV)\\s+(?P\u003c_kv_tail\u003e.*)$"
+          },
+          "failure_policy": "reject_rule",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        },
+        {
+          "id": "family_kv",
+          "name": "Reviewed allowlisted DAV fields",
+          "type": "mixed_kv",
+          "config": {
+            "allow_leading_text": false,
+            "assignment_separators": [
+              "="
+            ],
+            "duplicate_policy": "last",
+            "escape_character": "\\",
+            "input_field": "_kv_tail",
+            "key_aliases": {},
+            "key_allow_patterns": [
+              "^(?:address|auth|client_address|code|cosId|depth|domain|error|id|method|path|realm|resp_size|resp_time|return|status|type|user|user-agent|user_agent)$"
+            ],
+            "key_pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+            "max_fields": 256,
+            "max_input_bytes": 1048576,
+            "pair_separators": [
+              ":"
+            ],
+            "quote_characters": "\"'"
+          },
+          "failure_policy": "continue",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        },
+        {
+          "id": "family_types",
+          "name": "Reviewed DAV header numeric type",
+          "type": "type_conversion",
+          "config": {
+            "conversions": {
+              "pid_status": "int"
+            }
+          },
+          "failure_policy": "reject_rule",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        }
+      ],
+      "failure_policy": "reject_rule",
+      "projection_mode": "all",
+      "count_policy": "allow_derived"
+    }
+  ],
+  "resource_limits": {
+    "max_input_bytes": 1048576,
+    "max_fields": 512,
+    "max_captures": 256,
+    "max_regex_length": 4096,
+    "max_stage_count": 50,
+    "max_attempts": 4,
+    "execution_deadline_ms": 5000
+  },
+  "regression_cases": [
+    {
+      "name": "reviewed_pss-pabd_representative",
+      "input": "20260401 134433123+0100 server001 pabd 250410 0 139764641543936 Note;CARDDAV id=002fabf5:HTTP CHALLENGE REQUEST:method=1:realm=mx:address=11.22.33.44",
+      "service": "pabd",
+      "source_type": "file",
+      "expected_payload": {
+        "address": "11.22.33.44",
+        "date": "20260401",
+        "event": "CARDDAV",
+        "event_type": "Note",
+        "hostname": "server001",
+        "id": "002fabf5:HTTP CHALLENGE REQUEST",
+        "major_pid": "250410",
+        "method": "1",
+        "minor_pid": "139764641543936",
+        "pid_status": 0,
+        "realm": "mx",
+        "service": "pabd",
+        "time": "134433123+0100"
+      },
+      "expected_parser": "nli_reviewed_pss_pabd/reviewed_pss_pabd",
+      "expected_route": "normal"
+    }
+  ],
+  "metadata": {
+    "activation_review": "approved-and-activated",
+    "contract_key_count": "18",
+    "corpus_archive_sha256": "29ed50f36785fdf0f5693ab2a44d3613348b0898ec078567836286fac1781fa6",
+    "corpus_family": "PSS/PABD",
+    "corpus_fixture_sha256": "04581c2f4414291c7a25bcbd29f1acca1ebca2eb3f591b9c0446ae3b5775ea1e",
+    "effective_key_count": "20",
+    "importer_parity": "not-applicable",
+    "key_contract_sha256": "97afe8a831cbc45ed51daeab67a40cd31f081bbc680e637f42643f54d03c02cf",
+    "profile_asset_schema": "1",
+    "profile_kind": "product-reviewed-family-contract",
+    "profile_provenance": "explicit-product-owned-contract-not-importer-derived",
+    "review_reference": "sample-logs/keys.expected.json schema 2; records.expected.json schema 1",
+    "reviewed_extension_count": "2",
+    "runtime_order": "140",
+    "service_inference": "record-structure-and-reviewed-service-token"
+  }
+}

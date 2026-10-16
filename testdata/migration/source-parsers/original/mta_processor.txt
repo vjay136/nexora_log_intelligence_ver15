@@ -1,0 +1,349 @@
+declare "mta_filter" {
+
+    argument "logfilename" {}
+    argument "log_receiver" {}
+
+    loki.source.file "mta" {
+        targets               = [{__path__ = argument.logfilename.value, "job" = "mta"}]
+        forward_to            = [loki.process.mta.receiver]
+                tail_from_end = true
+    }
+
+    loki.process "mta" {
+        forward_to = [loki.relabel.mta_drop_label.receiver]
+        stage.regex {
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2}).(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3}).(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?P<service>[A-Za-z]+).{1}(?P<pid>[0-9]+).{1}(?P<minor_pid>[0-9]+).{1}(?P<thread_id>[0-9]+).{1}(?P<sev>[A-Za-z]+).{1}(?P<event>[A-Za-z0-9]+)\\([^)]*\\)\\s(?P<desc1>[^:]+):(?P<desc2>[^:]+):(?<kv_data>.*)$"
+        }
+
+        stage.regex {
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2}).(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3}).(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?P<service>[A-Za-z]+).{1}(?P<pid>[0-9]+).{1}(?P<minor_pid>[0-9]+).{1}(?P<thread_id>[0-9]+).{1}(?P<sev>[A-Za-z]+).{1}(?P<event>[A-Za-z0-9]+)\\([^)]*\\)\\s(?P<ops>[^:]+):(?<kv_data>.*)$"
+        }
+
+        // Get date in format
+        stage.template {
+            source = "formatted_date"
+            template = "{{.year}}-{{.month}}-{{.day}}T{{.hour}}:{{.min}}:{{.sec}}.{{.ms}}+{{.timezone}}:00"
+        }
+        stage.timestamp {
+            source = "formatted_date"
+            format = "2006-01-02T15:04:05.000Z07:00"
+            action_on_failure = "skip"
+        }
+
+        stage.labels {
+            values = {
+                event = "",
+                ops = "",
+            }
+        }
+
+        stage.match {
+           selector = "{event!~\"MsgTrace|FiltActionConflict|MtaMessageForwardChain|MtaServerFailed|MtaSenderRejected|SmtpDnsBadConfig\"}"
+           action = "drop"
+           drop_counter_reason = "non_essential_log"
+        }
+
+        stage.match {
+           selector = "{ops!~\".*(deferred|delivered|forwarded|received|bounced|MtaSenderRejected|MtaHostInvalid|).*\", event=~\"MtaMessageForwardChain|MtaServerFailed|MtaSenderRejected|SmtpDnsBadConfig\"}"
+           action = "drop"
+           drop_counter_reason = "non_essential_log"
+        }
+
+      // Drop non-essential MsgTrace events
+        stage.match {
+           selector = "{event=\"MsgTrace\", ops=~\".*(enqueueMsg|Successfully rescheduled message with).*\"}"
+           action = "drop"
+           drop_counter_reason = "non_essential_log"
+        }
+
+        stage.replace {
+             source    = "kv_data"
+             expression = "(:)"
+             replace   = " "
+        }
+
+        stage.template {
+            source = "kv_data"
+            template = `
+                {{- regexReplaceAll "([A-Za-z]+)=([^ ]+)" .kv_data "${1}=\"${2}\"" -}}
+            `
+        }
+
+        stage.replace {
+            source     = "kv_data"
+            expression = "(\\\\)"
+            replace    = "\\\\\\\\"
+        }
+
+        stage.logfmt {
+            source = "kv_data"
+            mapping = {
+                user = "user",
+                mbox = "mbox",
+                mss = "mss",
+                from = "from",
+                msgid = "msgid",
+                size = "size",
+                cmd = "cmd",
+                desthost = "desthost",
+                fromhost = "fromhost",
+                fromport = "fromport",
+                sid = "sid",
+                msgfile = "msgfile",
+                sender = "sender",
+                rcpts = "rcpts",
+                auth = "auth",
+                port = "port",
+                docid = "docid",
+                node = "node",
+                nodePort = "nodePort",
+                rcptCosId = "rcptCosId",
+            }
+        }
+
+        stage.template {
+            source = "output"
+            template = "{\"hostname\":\"{{ .hostname }}\"" +
+                        ",\"event\":\"{{ .event }}\"" +
+                        ",\"sev\":\"{{ .sev }}\"" +
+                        ",\"ops\":\"{{ .ops }}\"" +
+                        ",\"thread_id\":\"{{ .thread_id }}\"" +
+                        "{{ if .user }},\"user\":\"{{ .user }}\"{{ end }}" +
+                        "{{ if .mbox }},\"mbox\":\"{{ .mbox }}\"{{ end }}" +
+                        "{{ if .mss }},\"mss\":\"{{ .mss }}\"{{ end }}" +
+                        "{{ if .from }},\"from\":\"{{ .from }}\"{{ end }}" +
+                        "{{ if .msgid }},\"msgid\":\"{{ .msgid }}\"{{ end }}" +
+                        "{{ if .size }},\"size\":{{ .size }}{{ end }}" +
+                        "{{ if .cmd }},\"cmd\":\"{{ .cmd }}\"{{ end }}" +
+                        "{{ if .desthost }},\"desthost\":\"{{ .desthost }}\"{{ end }}" +
+                        "{{ if .fromhost }},\"fromhost\":\"{{ .fromhost }}\"{{ end }}" +
+                        "{{ if .fromport }},\"fromport\":\"{{ .fromport }}\"{{ end }}" +
+                        "{{ if .sid }},\"sid\":\"{{ .sid }}\"{{ end }}" +
+                        "{{ if .msgfile }},\"msgfile\":\"{{ .msgfile }}\"{{ end }}" +
+                        "{{ if .sender }},\"sender\":\"{{ .sender }}\"{{ end }}" +
+                        "{{ if .rcpts }},\"rcpts\":\"{{ .rcpts }}\"{{ end }}" +
+                        "{{ if .auth }},\"auth\":\"{{ .auth }}\"{{ end }}" +
+                        "{{ if .port }},\"port\":\"{{ .port }}\"{{ end }}" +
+                        "{{ if .docid }},\"docid\":\"{{ .docid }}\"{{ end }}" +
+                        "{{ if .node }},\"node\":\"{{ .node }}\"{{ end }}" +
+                        "{{ if .nodePort }},\"nodePort\":\"{{ .nodePort }}\"{{ end }}" +
+                        "{{ if .rcptCosId }},\"rcptCosId\":\"{{ .rcptCosId }}\"{{ end }}" +
+                        "}"
+        }
+
+                // Email bucket for user, rcpts, sender and from
+        // Domain matching is case-insensitive
+        stage.template {
+            source = "bucket_tmp"
+            template = `
+               {{- if .user -}}
+
+                   {{- if contains "@btinternet.com" (ToLower .user) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .user) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@btopenworld.com" (ToLower .user) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .user) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@talk21.com" (ToLower .user) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .user) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+
+                   {{- else if contains "@btinternet.com" (ToLower .rcpts) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .rcpts) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@btopenworld.com" (ToLower .rcpts) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .rcpts) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@talk21.com" (ToLower .rcpts) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .rcpts) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+
+                   {{- else if contains "@btinternet.com" (ToLower .sender) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .sender) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@btopenworld.com" (ToLower .sender) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .sender) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@talk21.com" (ToLower .sender) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .sender) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+
+                   {{- else if contains "@btinternet.com" (ToLower .from) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .from) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@btopenworld.com" (ToLower .from) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .from) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@talk21.com" (ToLower .from) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .from) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+
+                   {{- else -}}
+                       common
+                   {{- end -}}
+
+               {{- else if .rcpts -}}
+
+                   {{- if contains "@btinternet.com" (ToLower .rcpts) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .rcpts) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@btopenworld.com" (ToLower .rcpts) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .rcpts) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@talk21.com" (ToLower .rcpts) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .rcpts) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+
+                   {{- else if contains "@btinternet.com" (ToLower .sender) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .sender) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@btopenworld.com" (ToLower .sender) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .sender) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@talk21.com" (ToLower .sender) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .sender) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+
+                   {{- else if contains "@btinternet.com" (ToLower .from) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .from) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@btopenworld.com" (ToLower .from) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .from) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+
+                   {{- else if contains "@talk21.com" (ToLower .from) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .from) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+
+                   {{- else -}}
+                       common
+                   {{- end -}}
+
+               {{- else if .sender -}}
+
+                   {{- if contains "@btinternet.com" (ToLower .sender) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .sender) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@btopenworld.com" (ToLower .sender) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .sender) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@talk21.com" (ToLower .sender) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .sender) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+
+                   {{- else if contains "@btinternet.com" (ToLower .from) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .from) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@btopenworld.com" (ToLower .from) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .from) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+
+                   {{- else if contains "@talk21.com" (ToLower .from) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .from) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+
+                   {{- else -}}
+                       common
+                   {{- end -}}
+
+               {{- else if .from -}}
+
+                   {{- if contains "@btinternet.com" (ToLower .from) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .from) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@btopenworld.com" (ToLower .from) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .from) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+                   {{- else if contains "@talk21.com" (ToLower .from) -}}
+                       {{- $email := regexReplaceAll "^<|>$" (ToLower .from) "" -}}
+                       {{- $username := index (splitList "@" $email) 0 -}}
+                       {{- $username = regexReplaceAll "(\\.t1|\\.t2)$" $username "" -}}
+                       {{- printf "%.2s" (Sha2Hash $username "") -}}
+
+                   {{- else -}}
+                       common
+                   {{- end -}}
+
+               {{- else -}}
+                   common
+               {{- end -}}
+           `
+        }
+
+        stage.labels {
+            values = {
+                email_bucket = "bucket_tmp",
+            }
+        }
+
+        stage.output {
+            source = "output"
+        }
+    }
+    loki.relabel "mta_drop_label" {
+       rule {
+           action = "labeldrop"
+           regex  = "filename|fromhost|cmd|ops"
+       }
+       forward_to = argument.log_receiver.value
+    }
+}
+

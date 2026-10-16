@@ -1,0 +1,172 @@
+{
+  "id": "nli_reviewed_mss_capd",
+  "version": "5.0.0",
+  "revision": 1,
+  "sha256": "3ce8f380b35d61019cd41579e12f7741c198d5c7c1c63b7ee871fa675fecd249",
+  "source_type": "manual",
+  "source_hash": "98d52adb6926d1c9e5ea7c87a68d92aba6304519cbb1055da8b1105fa861f50f",
+  "author": "nexora-parser-review-board",
+  "review_state": "activated",
+  "created_at": "2026-10-05T00:00:00Z",
+  "activated_at": "2026-10-05T00:00:00Z",
+  "rules": [
+    {
+      "id": "reviewed_mss_capd",
+      "name": "Reviewed MSS/CAPD family profile",
+      "priority": 150,
+      "service_selectors": [
+        "capd",
+        "mss"
+      ],
+      "include_predicates": [
+        {
+          "type": "regex",
+          "field": "input",
+          "pattern": ";CalDavResponse\\s+id=[^:]+:[A-Za-z_][A-Za-z0-9_.-]*="
+        }
+      ],
+      "stages": [
+        {
+          "id": "family_header",
+          "name": "Reviewed DAV family header",
+          "type": "regex",
+          "config": {
+            "pattern": "^(?P<date>\\d{8})\\s+(?P<time>\\d{9}[+-]\\d{4})\\s+(?P<hostname>\\S+)\\s+(?P<service>\\S+)\\s+(?P<major_pid>\\d+)\\s+(?P<pid_status>\\d+)\\s+(?P<minor_pid>\\d+)\\s+(?P<event_type>[A-Za-z]+);(?P<event>CalDavResponse)\\s+(?P<_kv_tail>.*)$"
+          },
+          "failure_policy": "reject_rule",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        },
+        {
+          "id": "family_kv",
+          "name": "Reviewed allowlisted DAV fields",
+          "type": "mixed_kv",
+          "config": {
+            "allow_leading_text": false,
+            "assignment_separators": [
+              "="
+            ],
+            "duplicate_policy": "last",
+            "escape_character": "\\",
+            "input_field": "_kv_tail",
+            "key_aliases": {
+              "event": "input.event",
+              "hostname": "input.hostname"
+            },
+            "key_allow_patterns": [
+              "^(?:auth|clean_id|client_addre|client_address|cosId|depth|error_id|event|hostname|http_code|id|request|resp_size|resp_time|sev|status|thread_id|user-agent|username)$"
+            ],
+            "key_pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+            "max_fields": 256,
+            "max_input_bytes": 1048576,
+            "pair_separators": [
+              ":"
+            ],
+            "quote_characters": "\"'"
+          },
+          "failure_policy": "continue",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        },
+        {
+          "id": "family_types",
+          "name": "Reviewed DAV header numeric type",
+          "type": "type_conversion",
+          "config": {
+            "conversions": {
+              "pid_status": "int"
+            }
+          },
+          "failure_policy": "reject_rule",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        }
+      ],
+      "failure_policy": "reject_rule",
+      "projection_mode": "all",
+      "count_policy": "allow_derived"
+    }
+  ],
+  "resource_limits": {
+    "max_input_bytes": 1048576,
+    "max_fields": 512,
+    "max_captures": 256,
+    "max_regex_length": 4096,
+    "max_stage_count": 50,
+    "max_attempts": 4,
+    "execution_deadline_ms": 5000
+  },
+  "regression_cases": [
+    {
+      "name": "reviewed_mss-capd_representative",
+      "input": "20260401 072011706+0100 server001 capd 250622 0 140212679857920 Note;CalDavResponse id=003ed28b:username=m.robarts@sample.com:cosId=free_signin:auth=m.robarts@sample.com:request=PROPFIND /principals/5958214337087305606 HTTP/1.1:depth=0:user-agent=macOS/26.3.1 (25D2128) dataaccessd/1.0:error_id=0:http_code=207:status=Multi-status:resp_time=0:resp_size=554",
+      "service": "capd",
+      "source_type": "file",
+      "expected_payload": {
+        "auth": "m.robarts@sample.com",
+        "cosId": "free_signin",
+        "date": "20260401",
+        "depth": "0",
+        "error_id": "0",
+        "event": "CalDavResponse",
+        "event_type": "Note",
+        "hostname": "server001",
+        "http_code": "207",
+        "id": "003ed28b",
+        "major_pid": "250622",
+        "minor_pid": "140212679857920",
+        "pid_status": 0,
+        "request": "PROPFIND /principals/5958214337087305606 HTTP/1.1",
+        "resp_size": "554",
+        "resp_time": "0",
+        "service": "capd",
+        "status": "Multi-status",
+        "time": "072011706+0100",
+        "user-agent": "macOS/26.3.1 (25D2128) dataaccessd/1.0",
+        "username": "m.robarts@sample.com"
+      },
+      "expected_parser": "nli_reviewed_mss_capd/reviewed_mss_capd",
+      "expected_route": "normal"
+    }
+  ],
+  "metadata": {
+    "activation_review": "approved-and-activated",
+    "contract_key_count": "17",
+    "corpus_archive_sha256": "29ed50f36785fdf0f5693ab2a44d3613348b0898ec078567836286fac1781fa6",
+    "corpus_family": "MSS/CAPD",
+    "corpus_fixture_sha256": "98d52adb6926d1c9e5ea7c87a68d92aba6304519cbb1055da8b1105fa861f50f",
+    "effective_key_count": "19",
+    "field_alias.event": "input.event",
+    "field_alias.hostname": "input.hostname",
+    "importer_parity": "not-applicable",
+    "key_contract_sha256": "de59fed217f2e30c9e2b3786577eb35fc23670531c854b5d5bfa7c1cc0f4b873",
+    "profile_asset_schema": "1",
+    "profile_kind": "product-reviewed-family-contract",
+    "profile_provenance": "explicit-product-owned-contract-not-importer-derived",
+    "review_reference": "sample-logs/keys.expected.json schema 2; records.expected.json schema 1",
+    "reviewed_extension_count": "2",
+    "runtime_order": "150",
+    "service_inference": "record-structure-and-reviewed-service-token"
+  }
+}

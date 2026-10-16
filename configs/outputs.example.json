@@ -1,0 +1,53 @@
+{
+  "outputs": [
+    {
+      "type": "file",
+      "path": "/var/log/nli/normalized.jsonl",
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": ["normal", "warning"]
+    },
+    {
+      "type": "file",
+      "path": "/var/log/nli/quarantine.jsonl",
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": ["quarantine", "unknown"]
+    },
+    {
+      "type": "loki",
+      "url": "https://loki.example.com",
+      "labels": {"job": "nli", "environment": "production"},
+      "batch_size": 250,
+      "flush_sec": 3,
+      "retry_max": 3,
+      "fallback_path": "/var/lib/nli/spool/loki.jsonl"
+    },
+    {
+      "type": "clickhouse",
+      "url": "https://clickhouse.example.com:8443",
+      "database": "observability",
+      "table": "nli_logs",
+      "field_columns": {"fromhost": "client_ip", "user": "user_email"},
+      "max_field_columns": 256,
+      "username": "nli_ingest",
+      "password_env": "NLI_CLICKHOUSE_PASSWORD",
+      "batch_size": 500,
+      "flush_sec": 5,
+      "retry_max": 3,
+      "fallback_path": "/var/lib/nli/spool/clickhouse.jsonl"
+    }
+  ],
+  "telemetry_outputs": [
+    {
+      "type": "telemetry",
+      "url": "https://nli-controller.example.com:12382",
+      "routes": ["telemetry"],
+      "node_id_file": "/var/lib/nli-control-client/install.id",
+      "token_file": "/var/lib/nli-control-client/node.token",
+      "ca_file": "/etc/nli/controller-ca.crt",
+      "retry_max": 3,
+      "retry_backoff_ms": 200
+    }
+  ]
+}

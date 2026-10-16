@@ -1,0 +1,18 @@
+[Unit]
+Description=Nexora Log Intelligence - GeoIP Candidate Updater
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+User=root
+Group=root
+EnvironmentFile=-/etc/nli/controller.env
+EnvironmentFile=/etc/nli/geoip.env
+ExecStart=/usr/bin/nli geoip-update
+PrivateTmp=true
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=-/var/lib/nli-geoip -/etc/geoip-db
+UMask=0027

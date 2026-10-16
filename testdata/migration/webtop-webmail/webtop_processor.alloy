@@ -1,0 +1,223 @@
+declare "webtop_filter" {
+
+    argument "logfilename" {}
+    argument "log_receiver" {}
+
+    loki.source.file "webtop" {
+        targets    = [{__path__ = argument.logfilename.value, "job" = "webtop"}]
+        forward_to = [loki.process.webtop.receiver]
+        tail_from_end = true
+    }
+
+    loki.process "webtop" {
+        forward_to = [loki.relabel.webtop_drop_labels.receiver]
+
+        // Step 1: Extract timestamp and key-value data
+        stage.regex {
+          expression = "^(?P<date>\\d{4}-\\d{2}-\\d{2})\\s(?P<hms>\\d{2}:\\d{2}:\\d{2}):(?P<ms>\\d{3})(?P<tzsign>[+-])(?P<tz1>\\d{2})(?P<tz2>\\d{2})\\s(?P<kv_data>.+)$"
+        }
+
+        // Step 2: Parse key-value pairs
+        stage.logfmt {
+            source = "kv_data"
+            mapping = {
+                remoteport = "remoteport",
+                application = "application",
+                username = "username",
+                method = "method",
+                email = "email",
+                duration = "duration",
+                hostname = "hostname",
+                servername = "servername",
+                api = "api",
+                remoteaddr = "remoteaddr",
+                useragent = "useragent",
+                sessionid = "sessionid",
+                userid = "userid",
+                usercosid = "usercosid",
+                error = "error",
+                action = "action",
+                arg0 = "arg0",
+                arg1 = "arg1",
+                arg3 = "arg3",
+                bcc = "bcc",
+                cc = "cc",
+                clientid = "clientid",
+                displayName = "displayName",
+                firstName = "firstName",
+                lastName = "lastName",
+                fromEmail = "fromEmail",
+                fromName = "fromName",
+                path = "path",
+                previousemail = "previousemail",
+                service = "service",
+                smtpport = "smtpport",
+                smtphost = "smtphost",
+                sort = "sort",
+                to = "to",
+                "attr.user.FirstName" = "attr_user_FirstName",
+                "attr.user.LastName"  = "attr_user_LastName",
+                "messageSelection.ranges"   = "messageSelection_ranges",
+                "messageSelection.sort"     = "messageSelection_sort",
+                "messageSelection.uidNext"  = "messageSelection_uidNext",
+                "messageSelection.uidsCount"= "messageSelection_uidsCount",
+            }
+        }
+
+        // Set event = method
+        stage.template {
+            source   = "event"
+            template = "{{ .method }}"
+        }
+
+        // Ensure email_bucket exists (default empty)
+        stage.template {
+            source   = "email_bucket"
+            template = ""
+        }
+
+        // Promote 'event' to label
+        stage.labels {
+            values = {
+                event = null,
+                application = null,
+            }
+        }
+
+        // === KEEP ONLY THE 6 ALLOWED EVENTS ===
+        stage.match {
+            selector = "{event=~\"WebmailClientError|mail.message.list|log.log|mail.folder.list|mail.message.get|auth.nc.cookieless.loginByToken|auth.loginByToken|user.getCurrentUserInfo|mail.externalAccount.list|contacts.list|mail.forwarding.load|device.list|SSO.auth.loginByToken|auth.logout|mail.message.send|mail.message.check|mail.send|mail.message.attachment.getPart|resource.download|mail.blockedSender.load|contacts.suggest|mail.connect|calendar.list|SSO-mobile.auth.loginByToken|mail.message.saveDraft|calendar.event.report|mail.message.move|user.profile.save|mail.message.multiFlag|mail.copyMsgs|storage.account.list|contacts.getIndex|device.create|mail.allowedSender.load|mail.collectedAddress.list|mail.collectedAddress.collect|mail.getMsgStream|mail.message.search|mail.signature.list|calendar.toDo.report|mail.message.getQuota|noop.noop|mail.search|mail.alias.list|calendar.preference.load|officePreview.newSession|mail.message.searchList|user.profile.load|user.securitytracking.list|mail.open|contacts.listAll|auth.nc.cookieless.activateToken|officePreview.getPage|mail.close|mail.category.message.move|contacts.addressBook.list|calendar.event.read|mail.preference.load|prefs.get|timezone.get|mail.readMailboxInfo|auth.login|mail.folder.move|mail.message.report|mail.message.simpleFlagSearch|mail.message.searchMove|mail.readSortedMsgs|mail.preference.save|prefs.set|mail.exists|mail.getMessageAttributes|mail.listSubscribedDescendents|mail.forwarding.save|officePreview.getPdf|mail.fetch|mail.storeMsgFlags|calendar.event.create|mail.attachmentView.search|mail.externalAccount.popImport|mail.externalAccount.test|calendar.import|mail.blockedSender.modify|mail.message.getThreadSummary|mail.UID THREAD|mail.getStatus|mail.imapListUids|mail.renameFolder|device.delete|mail.filter.save|mail.message.delete|mail.message.print\"}"
+
+            // --- Generate email_bucket from 'username' (only the localpart, Remove trailing .t1 or .t2) ---
+            stage.regex {
+                source     = "username"
+                expression = "^(?P<email_normalized>[^@]+)"
+            }
+
+            stage.template {
+                source   = "email_normalized"
+                template = "{{ TrimSpace (ToLower .email_normalized) }}"
+            }
+
+            stage.template {
+                source   = "email_normalized"
+                template = `{{ regexReplaceAll "(\\.t1|\\.t2)$" .email_normalized "" }}`
+            }
+
+            stage.template {
+                source   = "email_hash"
+                template = `{{ Sha2Hash .email_normalized "" }}`
+            }
+
+            stage.regex {
+                source     = "email_hash"
+                expression = "^(?P<email_bucket>.{2})"
+            }
+
+            stage.labels {
+                values = {
+                    email_bucket = "email_bucket",
+                }
+            }
+
+            // GeoIP enrichment
+            stage.geoip {
+                db      = "/etc/geoip-db/GeoLite2-Country.mmdb"
+                source  = "remoteaddr"
+                db_type = "country"
+            }
+            stage.geoip {
+                db      = "/etc/geoip-db/GeoLite2-ASN.mmdb"
+                source  = "remoteaddr"
+                db_type = "asn"
+            }
+            stage.geoip {
+                db      = "/etc/geoip-db/GeoLite2-City.mmdb"
+                source  = "remoteaddr"
+                db_type = "city"
+            }
+
+            // Parse timestamp
+            stage.template {
+                source   = "timestamp"
+                template = "{{ .date }}T{{ .hms }}.{{ .ms }}{{ .tzsign }}{{ .tz1 }}:{{ .tz2 }}"
+            }
+            stage.timestamp {
+                source            = "timestamp"
+                format            = "2006-01-02T15:04:05.000Z07:00"
+                action_on_failure = "skip"
+            }
+
+            // Final JSON output
+            stage.template {
+                source = "output"
+                template = "{\"timestamp\":\"{{ .timestamp }}\"" +
+                           "{{ if .event }},\"event\":\"{{ .event }}\"{{ end }}" +
+                           "{{ if .application }},\"application\":\"{{ .application }}\"{{ end }}" +
+                           "{{ if .api }},\"api\":\"{{ .api }}\"{{ end }}" +
+                           "{{ if .hostname }},\"hostname\":\"{{ .hostname }}\"{{ end }}" +
+                           "{{ if .geoip_country_code }},\"geoip_country_code\":\"{{ .geoip_country_code }}\"{{ end }}" +
+                           "{{ if .action }},\"action\":\"{{ .action }}\"{{ end }}" +
+                           "{{ if .arg0 }},\"arg0\":\"{{ .arg0 }}\"{{ end }}" +
+                           "{{ if .arg1 }},\"arg1\":\"{{ .arg1 }}\"{{ end }}" +
+                           "{{ if .arg3 }},\"arg3\":\"{{ .arg3 }}\"{{ end }}" +
+                           "{{ if .attr_user_FirstName }},\"attr_user_FirstName\":\"{{ .attr_user_FirstName }}\"{{ end }}" +
+                           "{{ if .attr_user_LastName }},\"attr_user_LastName\":\"{{ .attr_user_LastName }}\"{{ end }}" +
+                           "{{ if .bcc }},\"bcc\":\"{{ .bcc }}\"{{ end }}" +
+                           "{{ if .cc }},\"cc\":\"{{ .cc }}\"{{ end }}" +
+                           "{{ if .clientid }},\"clientid\":\"{{ .clientid }}\"{{ end }}" +
+                           "{{ if .displayName }},\"displayName\":\"{{ .displayName }}\"{{ end }}" +
+                           "{{ if .username }},\"username\":\"{{ .username }}\"{{ end }}" +
+                           "{{ if .firstName }},\"firstName\":\"{{ .firstName }}\"{{ end }}" +
+                           "{{ if .fromEmail }},\"fromEmail\":\"{{ .fromEmail }}\"{{ end }}" +
+                           "{{ if .fromName }},\"fromName\":\"{{ .fromName }}\"{{ end }}" +
+                           "{{ if .lastName }},\"lastName\":\"{{ .lastName }}\"{{ end }}" +
+                           "{{ if .messageSelection_ranges }},\"messageSelection_ranges\":\"{{ .messageSelection_ranges }}\"{{ end }}" +
+                           "{{ if .messageSelection_sort }},\"messageSelection_sort\":\"{{ .messageSelection_sort }}\"{{ end }}" +
+                           "{{ if .messageSelection_uidNext }},\"messageSelection_uidNext\":\"{{ .messageSelection_uidNext }}\"{{ end }}" +
+                           "{{ if .messageSelection_uidsCount }},\"messageSelection_uidsCount\":\"{{ .messageSelection_uidsCount }}\"{{ end }}" +
+                           "{{ if .path }},\"path\":{{ .path | printf \"%q\" }}{{ end }}" +
+                           "{{ if .previousemail }},\"previousemail\":\"{{ .previousemail }}\"{{ end }}" +
+                           "{{ if .remoteaddr }},\"remoteaddr\":\"{{ .remoteaddr }}\"{{ end }}" +
+                           "{{ if .servername }},\"servername\":\"{{ .servername }}\"{{ end }}" +
+                           "{{ if .service }},\"service\":\"{{ .service }}\"{{ end }}" +
+                           "{{ if .sessionid }},\"sessionid\":\"{{ .sessionid }}\"{{ end }}" +
+                           "{{ if .smtphost }},\"smtphost\":\"{{ .smtphost }}\"{{ end }}" +
+                           "{{ if .sort }},\"sort\":\"{{ .sort }}\"{{ end }}" +
+                           "{{ if .to }},\"to\":\"{{ .to }}\"{{ end }}" +
+                           "{{ if .useragent }},\"useragent\":{{ .useragent | printf \"%q\" }}{{ end }}" +
+                           "{{ if .userid }},\"userid\":\"{{ .userid }}\"{{ end }}" +
+                           "{{ if .usercosid }},\"usercosid\":\"{{ .usercosid }}\"{{ end }}" +
+                           "{{ if .duration }},\"duration\":{{ .duration }}{{ end }}" +
+                           "{{ if .remoteport }},\"remoteport\":{{ .remoteport }}{{ end }}" +
+                           "{{ if .smtpport }},\"smtpport\":{{ .smtpport }}{{ end }}" +
+                           "{{ if .error }},\"error\":{{ .error }}{{ end }}" +
+                           "}"
+            }
+
+            stage.output {
+                source = "output"
+            }
+        }
+
+        // === DROP ALL OTHER EVENTS ===
+        stage.match {
+            selector = "{event!~\"WebmailClientError|mail.message.list|log.log|mail.folder.list|mail.message.get|auth.nc.cookieless.loginByToken|auth.loginByToken|user.getCurrentUserInfo|mail.externalAccount.list|contacts.list|mail.forwarding.load|device.list|SSO.auth.loginByToken|auth.logout|mail.message.send|mail.message.check|mail.send|mail.message.attachment.getPart|resource.download|mail.blockedSender.load|contacts.suggest|mail.connect|calendar.list|SSO-mobile.auth.loginByToken|mail.message.saveDraft|calendar.event.report|mail.message.move|user.profile.save|mail.message.multiFlag|mail.copyMsgs|storage.account.list|contacts.getIndex|device.create|mail.allowedSender.load|mail.collectedAddress.list|mail.collectedAddress.collect|mail.getMsgStream|mail.message.search|mail.signature.list|calendar.toDo.report|mail.message.getQuota|noop.noop|mail.search|mail.alias.list|calendar.preference.load|officePreview.newSession|mail.message.searchList|user.profile.load|user.securitytracking.list|mail.open|contacts.listAll|auth.nc.cookieless.activateToken|officePreview.getPage|mail.close|mail.category.message.move|contacts.addressBook.list|calendar.event.read|mail.preference.load|prefs.get|timezone.get|mail.readMailboxInfo|auth.login|mail.folder.move|mail.message.report|mail.message.simpleFlagSearch|mail.message.searchMove|mail.readSortedMsgs|mail.preference.save|prefs.set|mail.exists|mail.getMessageAttributes|mail.listSubscribedDescendents|mail.forwarding.save|officePreview.getPdf|mail.fetch|mail.storeMsgFlags|calendar.event.create|mail.attachmentView.search|mail.externalAccount.popImport|mail.externalAccount.test|calendar.import|mail.blockedSender.modify|mail.message.getThreadSummary|mail.UID THREAD|mail.getStatus|mail.imapListUids|mail.renameFolder|device.delete|mail.filter.save|mail.message.delete|mail.message.print\"}"
+            action = "drop"
+            drop_counter_reason = "method_not_in_allowlist"
+        }
+    }
+
+    loki.relabel "webtop_drop_labels" {
+        rule {
+            action = "labeldrop"
+            regex  = "filename|host"
+        }
+        forward_to = argument.log_receiver.value
+    }
+
+    export "webtop_log_process" {
+        value = loki.process.webtop.receiver
+    }
+}
+

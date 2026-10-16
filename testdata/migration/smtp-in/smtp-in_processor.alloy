@@ -1,0 +1,546 @@
+declare "smtp_filter" {
+
+    argument "logfilename" {}
+    argument "log_receiver" {}
+
+    loki.source.file "smtp" {
+        targets               = [{__path__ = argument.logfilename.value, "job" = "smtp-in"}]
+        forward_to            = [loki.process.smtp.receiver]
+    }
+
+    loki.process "smtp" {
+        forward_to = [loki.relabel.smtp_drop_label.receiver]
+
+        stage.regex {
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2}).(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3}).(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?P<service>[A-Za-z]+).{1}(?P<pid>[0-9]+).{1}(?P<minor_pid>[0-9]+).{1}(?P<thread_id>[0-9]+).{1}(?P<log_level>[A-Za-z]+).{1}(?P<event>[A-Za-z0-9]+)\\([^)]*\\)\\s(?<kv_string>.*)"
+        }
+
+        // SieveRuleMsg type-1
+        stage.regex {
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2}).(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3}).(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?P<service>[A-Za-z]+).{1}(?P<pid>[0-9]+).{1}(?P<minor_pid>[0-9]+).{1}(?P<thread_id>[0-9]+).{1}(?P<log_level>[A-Za-z]+).{1}(?P<event>[A-Za-z]+)\\([^)]*\\)\\sid=(?P<id>[^:]+).policy=(?P<policy>[^:]+).checkpoint=(?P<checkpoint>[^:]+).rule=(?P<rule>[^:]+).msg=(?P<msg>[^=]+)=eventType;(?P<eventType>[^|]+).(?<kv_string>.*)"
+        }
+
+        // Get date in format
+        stage.template {
+            source = "formated_date"
+            template = "{{.year}}-{{.month}}-{{.day}}T{{.hour}}:{{.min}}:{{.sec}}.{{.ms}}+{{.timezone}}:00"
+        }
+        stage.timestamp {
+           source = "formated_date"
+            format = "2006-01-02T15:04:05.000Z07:00"
+            action_on_failure = "skip"
+        }
+
+        stage.labels {
+            values = {
+                event = null,
+            }
+        }
+
+        stage.match {
+            selector = "{event=\"SieveRuleMsg\"}"
+            stage.regex {
+                source     = "eventType"
+                expression = "^(?P<eventTypeRoot>[^: ]+)"
+            }
+        }
+
+        stage.labels {
+            values = {
+                eventType = null,
+                eventTypeRoot = null,
+            }
+        }
+
+        stage.match {
+            selector = "{event=~\"SmtpServerAuthenticationSuccess|AntiAbuseDmarcAggregateReportData|AntiAbuseDmarcAggregateReportRecord|AntiAbuseARCChainVerificationResult|AntiAbuseDkimPass|AntiAbuseDkimResult|AntiAbuseDmarcFail|AntiAbuseDmarcPass|AntiAbuseTiming|SmtpClientConnectionOpened|SmtpClientConnectionReused|SmtpClientQueueTime|SmtpClientRelayOriginator|SmtpClientRelayTxBytes|SmtpClientRelayTxMsgBytes|SmtpDeliverAttemptSubmission|SmtpDeliverAttemptSubmissionWithStatus|SmtpMiscHeader|SmtpPluginPabwlPABHeaderFromUnlisted1|SmtpPluginPabwlPABMailFromUnlisted|SmtpPluginPabwlPABMailFromVerdictResults|SmtpPluginPabwlPabUserFound|SmtpPluginPabwlUnknownSenderFromFound|SmtpPluginSophosAVMsgEncrypted|SmtpPluginSophosAVMsgScanClean|SmtpPluginVadeASTrafficVerdict|SmtpPluginVadeASVadeDetail|SmtpServerIdentLink|SmtpServerQueueMessageFrom|SmtpServerQueueMessageID|SmtpServerQueueMessageRecipient|AntiAbuseDkimError|SmtpServerUserUnknownFromHostRCPTTO\"}"
+            stage.replace {
+                source    = "kv_string"
+                expression = "(:)"
+                replace   = "\",\""
+            }
+            stage.replace {
+                source    = "kv_string"
+                expression = "(=)"
+                replace   = "\":\""
+            }
+
+            stage.template {
+                 source = "json_kv_string"
+                 template = "{\"{{ .kv_string }}\"}"
+            }
+
+           // ############# Extract envelope
+           stage.regex {
+                expression = "\"envelope\":(?P<envelope_val>[^,]+)"
+                source = "kv_string"
+           }
+           // Correct envelope
+           stage.replace {
+               source    = "envelope_val"
+               expression = "(\":\")"
+               replace   = " "
+           }
+           // replace envelope
+            stage.replace {
+               source    = "kv_string"
+               expression = "\"envelope\":([^,]+)"
+               replace   = "{{ .envelope_val }}"
+           }
+
+           // ############# Extract From
+           stage.regex {
+                expression = "\"from\":(?P<from_val>[^,]+)"
+                source = "kv_string"
+           }
+           // correct from
+           stage.replace {
+               source    = "from_val"
+               expression = "(\")"
+               replace   = ""
+           }
+           // replace from
+            stage.replace {
+               source    = "kv_string"
+               expression = "\"from\":([^,]+)"
+               replace   = "\"{{ .from_val }}\""
+           }
+
+           // ############# Extract reply
+           stage.regex {
+                expression = "\"reply\":(?P<reply_val>[^,]+)"
+                source = "kv_string"
+           }
+           // Correct reply
+           stage.replace {
+               source    = "reply_val"
+               expression = "(\\\\3a)"
+               replace   = ":"
+           }
+           // replace reply
+            stage.replace {
+               source    = "kv_string"
+               expression = "\"reply\":([^,]+)"
+               replace   = "{{ .reply_val }}"
+           }
+
+
+           // ############# Extract value
+           stage.regex {
+                expression = "\"value\":(?P<value_val>[^,]+)"
+                source = "kv_string"
+           }
+           // Remove all (") value
+           stage.replace {
+               source    = "value_val"
+               expression = "(\")"
+               replace   = ""
+           }
+           // Remove all "\"
+           stage.replace {
+               source    = "value_val"
+               expression = "(\\\\)"
+               replace   = " "
+           }
+           // replace value
+            stage.replace {
+               source    = "kv_string"
+               expression = "\"value\":([^,]+)"
+               replace   = "\"{{ .value_val }}"
+           }
+
+           // ############# Extract rua for mailto
+           stage.regex {
+                expression = "\"rua\":(?P<rua_val>[^,]+)"
+                source = "kv_string"
+           }
+           // Correct mailto
+           stage.replace {
+               source    = "rua_val"
+               expression = "(\\\\3a)"
+               replace   = ":"
+           }
+           // replace mailto
+            stage.replace {
+               source    = "kv_string"
+               expression = "\"rua\":([^,]+)"
+               replace   = "{{ .rua_val }}"
+           }
+
+
+            stage.json {
+                source = "json_kv_string"
+                expressions = {
+                   host = "",
+                }
+            }
+
+            stage.labels {
+                values = {
+                  host = "",
+                }
+            }
+
+            stage.match {
+                selector = "{host=~\".+\"}"
+                stage.geoip {
+                    db = "/etc/geoip-db/GeoLite2-Country.mmdb"
+                    source  = "host"
+                    db_type = "country"
+                }
+                stage.geoip {
+                    db = "/etc/geoip-db/GeoLite2-ASN.mmdb"
+                    source  = "host"
+                    db_type = "asn"
+                }
+                stage.geoip {
+                    db = "/etc/geoip-db/GeoLite2-City.mmdb"
+                    source  = "host"
+                    db_type = "city"
+                }
+
+                stage.template {
+                    source = "is_private_ip"
+                    template = "{{ if regexMatch `^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.)` .host }}true{{ else }}false{{ end }}"
+                }
+                stage.template {
+                    source = "geoip_country_code"
+                    template = "{{ if eq .is_private_ip \"true\" }}GB{{ else }}{{ .geoip_country_code }}{{ end }}"
+                }
+                stage.template {
+                    source = "geoip_city_name"
+                    template = "{{ if eq .is_private_ip \"true\" }}OPWV_WEB{{ else }}{{ .geoip_city_name }}{{ end }}"
+                }
+
+                stage.template {
+                    source = "geo_details"
+                    template = "\"geoip_country_code\": \"{{ .geoip_country_code }}\", \"geoip_city_name\": \"{{ .geoip_city_name }}\""
+                }
+
+                stage.template {
+                    source = "network_bucket"
+                    template = `
+                        {{- if and .host (regexMatch "^([0-9]{1,3}\\.){3}[0-9]{1,3}$" .host) -}}
+                            {{- $net := regexReplaceAll "^([0-9]+\\.[0-9]+\\.[0-9]+)\\.[0-9]+$" .host "$1" -}}
+                            {{ printf "%.1s" (Sha2Hash $net "") }}
+                        {{- end -}}
+                    `
+                }
+                stage.labels {
+                    values = {
+                        network_bucket = "network_bucket",
+                    }
+                }
+            }
+
+            stage.template {
+                source = "formatted_event"
+                template = "{\"hostname\": \"{{ .hostname }}\", \"service\": \"{{ .service }}\", \"pid\": \"{{ .pid }}\", \"minor_pid\": \"{{ .minor_pid }}\", \"thread_id\": \"{{ .thread_id }}\", \"log_level\": \"{{ .log_level }}\", \"event\": \"{{ .event }}\", \"{{ .kv_string }}\"{{ if .geo_details }},{{ .geo_details }}{{ end }}}"
+            }
+
+            stage.output {
+                source = "formatted_event"
+            }
+        }
+
+        stage.match {
+            selector = "{event=\"SieveRuleMsg\", eventTypeRoot=~\"misreport|LARGEMESSAGE\"}"
+            stage.replace {
+               source    = "kv_string"
+               expression = "(:)"
+               replace   = " "
+            }
+
+            stage.replace {
+               source    = "kv_string"
+               expression = "(value=)"
+               replace   = "\",\"value:"
+            }
+
+            // Value can contain characters which can further break json so handle it.
+            stage.regex {
+                source    = "kv_string"
+                expression = "\"value:(?P<val>[^,]+)"
+            }
+            // Correct value of field Value.
+            stage.replace {
+                source    = "val"
+                expression = "(\\|+)"
+                replace   = " "
+            }
+            stage.replace {
+                source    = "val"
+                expression = "\\\\([^\"\\\\/bfnrtu])"
+                replace    = ""
+            }
+            stage.replace {
+                source    = "val"
+                expression = "[\\x00-\\x1F]"
+                replace    = " "
+            }
+            // Insert corrected value
+            stage.replace {
+               source    = "kv_string"
+               expression = "\"value:(?P<val>[^,]+)"
+               replace   = "{{ .val }}"
+            }
+
+            stage.replace {
+               source    = "kv_string"
+               expression = "(;)"
+               replace   = ":"
+            }
+
+            stage.replace {
+               source    = "kv_string"
+               expression = "(:)"
+               replace   = "\":\""
+            }
+
+            stage.replace {
+               source    = "kv_string"
+               expression = "(\\|+)"
+               replace   = "\",\""
+            }
+
+            // value can contain | or other char that could break json , so fix it e.g "sav_vdct":"clean","vade_vdct":"spam","vade_score":"110","vade_class":"spam ","value":"Extra 20% OFF Outlet "," Top Picks"}
+            // START CODE
+            stage.regex {
+                source = "kv_string"
+                expression = "value\":\"(?P<value_part>[^}]*)"
+            }
+            // Replace all " with space
+            stage.replace {
+               source    = "value_part"
+               expression = "(\")"
+               replace   = ""
+            }
+            // Now as value is cleaned up replace in origional kv_string
+            stage.replace {
+               source    = "kv_string"
+               expression = "value\":\"(?P<value_part>[^}]*)"
+               replace   = "{{ .value_part }}"
+            }
+            // END CODE
+
+           // ######## Extract subject_block
+            stage.regex {
+                expression = "\"subject_block\":(?P<subject_block_val>[^,]+)"
+                source = "kv_string"
+           }
+           // Correct subject_block
+           stage.replace {
+                source    = "subject_block_val"
+                expression = "\\\\([^\"\\\\/bfnrtu])"
+                replace    = ""
+           }
+           // Correct and remove ":"
+           stage.replace {
+               source    = "subject_block_val"
+               expression = "(\":\")"
+               replace   = " "
+           }
+           stage.replace {
+                source    = "subject_block_val"
+                expression = "[\\x00-\\x1F]"
+                replace    = " "
+           }
+           // replace subject_block
+            stage.replace {
+               source    = "kv_string"
+               expression = "\"subject_block\":([^,]+)"
+               replace   = "{{ .subject_block_val }}"
+           }
+
+
+           // ######## Extract dkimdom
+            stage.regex {
+                expression = "\"dkimdom\":(?P<dkim_val>[^,]+)"
+                source = "kv_string"
+           }
+           // Correct dkimdom
+           stage.replace {
+               source    = "dkim_val"
+               expression = "(\":\")"
+               replace   = " "
+           }
+           // replace dkimdom
+            stage.replace {
+               source    = "kv_string"
+               expression = "\"dkimdom\":([^,]+)"
+               replace   = "{{ .dkim_val }}"
+           }
+
+           // add email_bucket code for user , if rcpt does not exit add common lable
+           // Extract and normalize recipient
+           stage.regex {
+               source     = "kv_string"
+               expression = "rcpt\":\"(?P<rcpt>[^\"]*)"
+           }
+           stage.regex {
+               source     = "rcpt"
+               expression = "<(?P<rcpt>[^>]+)>"
+           }
+           stage.template {
+               source   = "rcpt"
+               template = "{{ ToLower .Value }}"
+           }
+           // Extract recipient username
+           stage.regex {
+               source     = "rcpt"
+               expression = "^(?P<rcpt_username>[^@]+)@"
+           }
+           // Remove trailing .t21 or .t1 from recipient username
+           stage.template {
+               source = "rcpt_username"
+               template = `
+                   {{- if regexMatch "\\.(t21|t1)$" .Value -}}
+                       {{- regexReplaceAll "\\.(t21|t1)$" .Value "" -}}
+                   {{- else -}}
+                       {{- .Value -}}
+                   {{- end -}}
+               `
+           }
+
+           // Extract and normalize sender
+           stage.regex {
+               source     = "kv_string"
+               expression = "sender\":\"(?P<sender>[^\"]*)"
+           }
+           stage.regex {
+               source     = "sender"
+               expression = "<(?P<sender>[^>]+)>"
+           }
+           stage.template {
+               source   = "sender"
+               template = "{{ ToLower .Value }}"
+           }
+           // Extract sender username
+           stage.regex {
+               source     = "sender"
+               expression = "^(?P<sender_username>[^@]+)@"
+           }
+           // Remove trailing .t21 or .t1 from sender username
+           stage.template {
+               source = "sender_username"
+               template = `
+                   {{- if regexMatch "\\.(t21|t1)$" .Value -}}
+                       {{- regexReplaceAll "\\.(t21|t1)$" .Value "" -}}
+                   {{- else -}}
+                       {{- .Value -}}
+                   {{- end -}}
+               `
+           }
+
+           // Create email bucket
+           stage.template {
+               source = "bucket_tmp"
+               template = `
+                   {{- if .rcpt -}}
+                       {{- if contains "@btinternet.com" .rcpt -}}
+                           {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                       {{- else if contains "@talk21.com" .rcpt -}}
+                           {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                       {{- else if contains "@btopenworld.com" .rcpt -}}
+                           {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                       {{- else if contains "@btinternet.com" .sender -}}
+                           {{- printf "%.2s" (Sha2Hash .sender_username "") -}}
+                       {{- else if contains "@talk21.com" .sender -}}
+                           {{- printf "%.2s" (Sha2Hash .sender_username "") -}}
+                       {{- else if contains "@btopenworld.com" .sender -}}
+                           {{- printf "%.2s" (Sha2Hash .sender_username "") -}}
+                       {{- else -}}
+                           common
+                       {{- end -}}
+                   {{- else if .sender -}}
+                       {{- if contains "@btinternet.com" .sender -}}
+                           {{- printf "%.2s" (Sha2Hash .sender_username "") -}}
+                       {{- else if contains "@talk21.com" .sender -}}
+                           {{- printf "%.2s" (Sha2Hash .sender_username "") -}}
+                       {{- else if contains "@btopenworld.com" .sender -}}
+                           {{- printf "%.2s" (Sha2Hash .sender_username "") -}}
+                       {{- else -}}
+                           common
+                       {{- end -}}
+                   {{- else -}}
+                       common
+                   {{- end -}}
+               `
+           }
+           stage.labels {
+               values = {
+                   email_bucket = "bucket_tmp",
+               }
+           }
+           // End email_bucket
+           // End of email_bucket code
+            // Create network_bucket for SieveRuleMsg using fromhost
+            stage.regex {
+                source = "kv_string"
+                expression = "fromhost[\":=]+(?P<fromhost>[0-9]{1,3}(\\.[0-9]{1,3}){3})"
+            }
+
+            stage.template {
+                source = "network_bucket"
+                template = `
+                    {{- if and .fromhost (regexMatch "^([0-9]{1,3}\\.){3}[0-9]{1,3}$" .fromhost) -}}
+                        {{- $net := regexReplaceAll "^([0-9]+\\.[0-9]+\\.[0-9]+)\\.[0-9]+$" .fromhost "$1" -}}
+                        {{ printf "%.1s" (Sha2Hash $net "") }}
+                    {{- end -}}
+                `
+            }
+
+            stage.labels {
+                values = {
+                    network_bucket = "network_bucket",
+                }
+            }
+
+           stage.template {
+                source = "SieveRuleMsg_label"
+                template = "{\"hostname\": \"{{ .hostname }}\", \"service\": \"{{ .service }}\", \"pid\": \"{{ .pid }}\", \"minor_pid\": \"{{ .minor_pid }}\", \"thread_id\": \"{{ .thread_id }}\", \"log_level\": \"{{ .log_level }}\", \"event\": \"{{ .event }}\", \"id\": \"{{ .id }}\", \"policy\": \"{{ .policy }}\", \"checkpoint\": \"{{ .checkpoint }}\", \"rule\": \"{{ .rule }}\", \"msg\": \"{{ .msg }}\", \"eventType\": \"{{ .eventType }}\", \"{{ .kv_string }}\"}"
+           }
+           stage.output {
+                source = "SieveRuleMsg_label"
+           }
+        }
+        stage.match {
+            selector = "{event=\"SieveRuleMsg\", eventTypeRoot=~\"FN_From|FN_Subject|FP_Subject|FP_From\"}"
+            stage.replace {
+                source     = "eventType"
+                expression = "(\")"
+                replace    = " "
+            }
+            // May be we can add another type of label for this events
+            stage.labels {
+                values = {
+                   email_bucket = "common",
+                }
+            }
+            // end of bucket
+            stage.template {
+                source = "SieveRuleMsg_type2"
+                template = "{\"hostname\": \"{{ .hostname }}\", \"service\": \"{{ .service }}\", \"pid\": \"{{ .pid }}\", \"minor_pid\": \"{{ .minor_pid }}\", \"thread_id\": \"{{ .thread_id }}\", \"log_level\": \"{{ .log_level }}\", \"event\": \"{{ .event }}\", \"id\": \"{{ .id }}\", \"policy\": \"{{ .policy }}\", \"checkpoint\": \"{{ .checkpoint }}\", \"rule\": \"{{ .rule }}\", \"msg\": \"{{ .msg }}\", \"eventType\": \"{{ .eventType }}\"}"
+            }
+            stage.output {
+                source = "SieveRuleMsg_type2"
+            }
+        }
+
+        stage.match {
+            //selector = "{event!~\"SieveRuleMsg|AntiAbuseDmarcAggregateReportData|AntiAbuseDmarcAggregateReportRecord|AntiAbuseARCChainVerificationResult|AntiAbuseDkimPass|AntiAbuseDkimResult|AntiAbuseDmarcFail|AntiAbuseDmarcPass|AntiAbuseTiming|SmtpClientConnectionOpened|SmtpClientConnectionReused|SmtpClientQueueTime|SmtpClientRelayOriginator|SmtpClientRelayTxBytes|SmtpClientRelayTxMsgBytes|SmtpDeliverAttemptSubmission|SmtpDeliverAttemptSubmissionWithStatus|SmtpMiscHeader|SmtpPluginPabwlPABHeaderFromUnlisted1|SmtpPluginPabwlPABMailFromUnlisted|SmtpPluginPabwlPABMailFromVerdictResults|SmtpPluginPabwlPabUserFound|SmtpPluginPabwlUnknownSenderFromFound|SmtpPluginSophosAVMsgEncrypted|SmtpPluginSophosAVMsgScanClean|SmtpPluginVadeASTrafficVerdict|SmtpPluginVadeASVadeDetail|SmtpServerIdentLink|SmtpServerQueueMessageFrom|SmtpServerQueueMessageID|SmtpServerQueueMessageRecipient|AntiAbuseDkimError\"}"
+            // 1st Phase : Ingest only logs available in ELK
+            selector = "{event!~\"SieveRuleMsg|SmtpServerAuthenticationSuccess|AntiAbuseDmarcAggregateReportRecord|SmtpPluginVadeASVadeDetail|SmtpMiscHeader|AntiAbuseDmarcAggregateReportData|SmtpServerUserUnknownFromHostRCPTTO|SmtpServerUnableVerifyMailFrom\"}"
+            action = "drop"
+            drop_counter_reason = "non_essential_log"
+        }
+   }
+
+   loki.relabel "smtp_drop_label" {
+       rule {
+           action = "labeldrop"
+           regex  = "filename|eventTypeRoot|eventType|host"
+       }
+       forward_to = argument.log_receiver.value
+   }
+}

@@ -1,0 +1,17 @@
+[Unit]
+Description=Nexora Log Intelligence - Controller Bootstrap
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/nli/controller-bootstrap.env
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/nli/controller-bootstrap.env
+Environment=NLI_CONTROLLER_PROFILE_FILE=/etc/nli/controller-bootstrap.env
+ExecStart=/usr/sbin/nli-controller-setup
+Restart=on-failure
+RestartSec=30s
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,23 @@
+bin/
+dist/
+*.rpm
+*.tar.gz
+vendor/
+*.jsonl
+*.tmp
+bench/*.json
+build/
+.preview/
+node_modules/
+__pycache__/
+*.py[cod]
+# Keep every dotenv file local, including Vercel environment files and nested copies.
+.env
+.env.*
+!.env.local.example
+**/.env
+**/.env.*
+!**/.env.local.example
+
+.vercel/
+.nli-private/

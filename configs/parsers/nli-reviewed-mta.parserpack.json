@@ -1,0 +1,195 @@
+{
+  "id": "nli_reviewed_mta",
+  "version": "5.0.0",
+  "revision": 1,
+  "sha256": "8eadf560e3b90c34fad2892bf2a2d4b60f88fabd1553265b5a1876578c2cfed4",
+  "source_type": "manual",
+  "source_hash": "40fa9697e3e7aac40e423d56566a564ff50b4a0413f4eb9fd63b40a8e9602ef6",
+  "author": "nexora-parser-review-board",
+  "review_state": "activated",
+  "created_at": "2026-10-05T00:00:00Z",
+  "activated_at": "2026-10-05T00:00:00Z",
+  "rules": [
+    {
+      "id": "reviewed_mta",
+      "name": "Reviewed MTA family profile",
+      "priority": 130,
+      "service_selectors": [
+        "mta"
+      ],
+      "stages": [
+        {
+          "id": "family_header",
+          "name": "Reviewed native family header",
+          "type": "static_layout",
+          "config": {
+            "fail_on_missing": true,
+            "tokens": [
+              {
+                "index": 0,
+                "name": "date",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 1,
+                "name": "time",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 2,
+                "name": "hostname",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 3,
+                "name": "service",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 4,
+                "name": "major_pid",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 5,
+                "name": "pid_status",
+                "required": true,
+                "type": "int"
+              },
+              {
+                "index": 6,
+                "name": "minor_pid",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "config": {
+                  "pattern": "^(?P<event_type>[^;]+);(?P<event>[^()]+)\\((?P<code>[^()]+)\\)$"
+                },
+                "index": 7,
+                "name": "_event_capture",
+                "required": true,
+                "type": "regex"
+              },
+              {
+                "index": 8,
+                "name": "_kv_tail",
+                "optional": true,
+                "type": "rest_of_line"
+              }
+            ]
+          },
+          "failure_policy": "reject_rule",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        },
+        {
+          "id": "family_kv",
+          "name": "Reviewed allowlisted family fields",
+          "type": "mixed_kv",
+          "config": {
+            "allow_leading_text": true,
+            "assignment_separators": [
+              "="
+            ],
+            "duplicate_policy": "last",
+            "escape_character": "\\",
+            "input_field": "_kv_tail",
+            "key_aliases": {
+              "time": "input.time"
+            },
+            "key_allow_patterns": [
+              "^(?:Reason|auth|cmd|cosId|desthost|docid|encoding|from|fromhost|fromport|info|localAddr|mbox|msgfile|msgid|msgsize|mss|node|nodePort|numrcpts|oldfrom|oldid|oldrcpts|port|protocol|qservicemsgid|rcptCosId|rcpts|sender|sid|size|time|user)$"
+            ],
+            "key_pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+            "max_fields": 256,
+            "max_input_bytes": 1048576,
+            "pair_separators": [
+              ":",
+              "|"
+            ],
+            "quote_characters": "\"'"
+          },
+          "failure_policy": "continue",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        }
+      ],
+      "failure_policy": "reject_rule",
+      "projection_mode": "all",
+      "count_policy": "allow_derived"
+    }
+  ],
+  "resource_limits": {
+    "max_input_bytes": 1048576,
+    "max_fields": 512,
+    "max_captures": 256,
+    "max_regex_length": 4096,
+    "max_stage_count": 50,
+    "max_attempts": 4,
+    "execution_deadline_ms": 5000
+  },
+  "regression_cases": [
+    {
+      "name": "reviewed_mta_representative",
+      "input": "20260310 090000006+0000 server001 mta 249489 251927 140409946728192 Note;MtaRequestingDomainTableUpdate(79/102) fromhost=[11.22.33.44]:fromport=13804:localAddr=11.22.33.44:sid=2D85F5AE-7596EFB4-00894C3E.2",
+      "service": "mta",
+      "source_type": "file",
+      "expected_payload": {
+        "code": "79/102",
+        "date": "20260310",
+        "event": "MtaRequestingDomainTableUpdate",
+        "event_type": "Note",
+        "fromhost": "[11.22.33.44]",
+        "fromport": "13804",
+        "hostname": "server001",
+        "localAddr": "11.22.33.44",
+        "major_pid": "249489",
+        "minor_pid": "140409946728192",
+        "pid_status": 251927,
+        "service": "mta",
+        "sid": "2D85F5AE-7596EFB4-00894C3E.2",
+        "time": "090000006+0000"
+      },
+      "expected_parser": "nli_reviewed_mta/reviewed_mta",
+      "expected_route": "normal"
+    }
+  ],
+  "metadata": {
+    "activation_review": "approved-and-activated",
+    "contract_key_count": "33",
+    "corpus_archive_sha256": "29ed50f36785fdf0f5693ab2a44d3613348b0898ec078567836286fac1781fa6",
+    "corpus_family": "MTA",
+    "corpus_fixture_sha256": "40fa9697e3e7aac40e423d56566a564ff50b4a0413f4eb9fd63b40a8e9602ef6",
+    "effective_key_count": "33",
+    "field_alias.time": "input.time",
+    "importer_parity": "not-applicable",
+    "key_contract_sha256": "a9506e4ea6c57bd51f9651035871a118fa27ce3f946f41f49403df9246c87d07",
+    "profile_asset_schema": "1",
+    "profile_kind": "product-reviewed-family-contract",
+    "profile_provenance": "explicit-product-owned-contract-not-importer-derived",
+    "review_reference": "sample-logs/keys.expected.json schema 2; records.expected.json schema 1",
+    "reviewed_extension_count": "0",
+    "runtime_order": "130",
+    "service_inference": "record-structure-and-reviewed-service-token"
+  }
+}

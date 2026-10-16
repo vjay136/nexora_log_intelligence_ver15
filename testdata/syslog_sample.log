@@ -1,0 +1,7 @@
+Oct  2 10:00:01 server01 sshd[1234]: Accepted password for alice from 10.0.0.1 port 22 ssh2
+Oct  2 10:00:02 server01 sshd[1234]: session opened for user alice by (uid=0)
+Oct  2 10:00:03 server01 kernel: [12345.678] EXT4-fs (sda1): mounted filesystem
+Oct  2 10:00:04 server01 sudo: alice : TTY=pts/0 ; PWD=/home/alice ; USER=root ; COMMAND=/bin/ls
+<34>1 2026-10-02T10:00:05Z server01 sshd 5678 - - Disconnected from user alice 10.0.0.1 port 22
+Oct  2 10:00:06 server01 postfix/smtp[9012]: ABCDEF123456: to=<bob@example.com>, relay=mail.example.com, status=sent
+Oct  2 10:00:07 server01 dovecot: imap-login: Login: user=alice, method=PLAIN, rip=10.0.0.1

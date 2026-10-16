@@ -1,0 +1,5 @@
+* text=auto eol=lf
+
+# Preserve uploaded customer parser fixtures byte-for-byte for SHA-256 provenance.
+testdata/migration/** -text
+*.ps1 text eol=crlf

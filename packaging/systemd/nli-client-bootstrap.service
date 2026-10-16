@@ -1,0 +1,15 @@
+[Unit]
+Description=Nexora Log Intelligence - Client Bootstrap
+Wants=network-online.target
+After=network-online.target
+ConditionPathExists=/etc/nli/bootstrap.env
+StartLimitIntervalSec=0
+
+[Service]
+Type=oneshot
+ExecStart=/usr/sbin/nli-client-setup /etc/nli/bootstrap.env
+Restart=on-failure
+RestartSec=30s
+
+[Install]
+WantedBy=multi-user.target

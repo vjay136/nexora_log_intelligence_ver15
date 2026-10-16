@@ -1,0 +1,34 @@
+[Unit]
+Description=Nexora Log Intelligence - Client Agent
+After=network-online.target local-fs.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nli
+Group=nli
+EnvironmentFile=-/etc/nli/nli.env
+WorkingDirectory=/var/lib/nli
+ExecStart=/usr/bin/nli-agent --config /etc/nli/nli.json
+Restart=on-failure
+RestartSec=5
+UMask=0027
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+ReadWritePaths=/var/lib/nli /var/log/nli
+ReadOnlyPaths=/etc/nli
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=nli-agent
+
+[Install]
+WantedBy=multi-user.target

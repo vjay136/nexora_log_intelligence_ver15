@@ -1,0 +1,663 @@
+declare "smtp_filter" {
+
+    argument "logfilename" {}
+    argument "log_receiver" {}
+
+    loki.source.file "smtp" {
+        targets    = [{__path__ = argument.logfilename.value, "job" = "smtp-in"}]
+        forward_to = [loki.process.smtp.receiver]
+    }
+
+    loki.process "smtp" {
+        forward_to = [loki.relabel.smtp_drop_label.receiver]
+
+        // --------------------------------------------------------------------
+        // 1. Parse the native SMTP log header.
+        //
+        // Input format:
+        // 20260925 083120808+0200 server001 smtp 311776 0 139716457142016
+        // Note;EventName(2004/14) id=...:key=value:key=value
+        //
+        // These source lines are NOT JSON, so stage.json is deliberately not
+        // used on the incoming log line.
+        // --------------------------------------------------------------------
+        stage.regex {
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2})\\s(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3})\\+(?P<timezone>\\d{2})(?P<timezone_min>\\d{2})\\s(?P<hostname>[A-Za-z0-9-]+)\\s(?P<service>[A-Za-z]+)\\s(?P<pid>[0-9]+)\\s(?P<minor_pid>[0-9]+)\\s(?P<thread_id>[0-9]+)\\s(?P<log_level>[A-Za-z]+);(?P<event>[A-Za-z0-9]+)\\([^)]*\\)\\s(?P<kv_string>.*)$"
+        }
+
+        // --------------------------------------------------------------------
+        // 2. Build and apply the original event timestamp.
+        // --------------------------------------------------------------------
+        stage.template {
+            source = "formatted_date"
+            template = "{{ .year }}-{{ .month }}-{{ .day }}T{{ .hour }}:{{ .min }}:{{ .sec }}.{{ .ms }}+{{ .timezone }}:{{ .timezone_min }}"
+        }
+
+        stage.timestamp {
+            source = "formatted_date"
+            format = "2006-01-02T15:04:05.000Z07:00"
+            action_on_failure = "skip"
+        }
+
+        // --------------------------------------------------------------------
+        // 3. Keep event/eventType labels required by the existing selectors.
+        // --------------------------------------------------------------------
+        stage.labels {
+            values = {
+                event = "",
+            }
+        }
+
+        stage.match {
+            selector = "{event=\"SieveRuleMsg\"}"
+
+            stage.regex {
+                source     = "kv_string"
+                expression = "(?P<kv_prefix>^|:)eventType=(?P<eventType>[^:|]+)"
+            }
+
+            stage.regex {
+                source     = "eventType"
+                expression = "^(?P<eventTypeRoot>[^: ]+)"
+            }
+        }
+
+        stage.labels {
+            values = {
+                eventType     = "",
+                eventTypeRoot = "",
+            }
+        }
+
+        // --------------------------------------------------------------------
+        // 4. Extract common SMTP key/value fields.
+        //
+        // kv_string is intentionally left untouched. This preserves the raw
+        // application payload and avoids corrupting escaped values while still
+        // making common fields available as real JSON properties later.
+        // --------------------------------------------------------------------
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)id=(?P<id>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)policy=(?P<policy>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)checkpoint=(?P<checkpoint>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)rule=(?P<rule>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)msg=(?P<msg>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)eventType=(?P<eventType>[^:|]+)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)action=(?P<action>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)from=(?P<from>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)rcpt=(?P<rcpt>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)envelope=(?P<envelope>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)domain=(?P<domain>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)user=(?P<user>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)name=(?P<name>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)folder=(?P<folder>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)server=(?P<server>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)port=(?P<port>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)count=(?P<count>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)size=(?P<size>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)result=(?P<result>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)status=(?P<status>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)origin=(?P<origin>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)selector=(?P<selector>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)algorithm=(?P<algorithm>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)type=(?P<type>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)entryName=(?P<entryName>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)tag=(?P<tag>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)header=(?P<header>[^:]*)"
+        }
+
+        // SmtpMiscHeader.value can contain ':'; capture it to end of line.
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)value=(?P<value>.*)$"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)abuseid=(?P<abuseid>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)ms=(?P<ms_value>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)geo=(?P<geo>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)helo=(?P<helo>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)spffrommatch=(?P<spffrommatch>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)spffrom=(?P<spffrom>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)header_from=(?P<header_from>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)dmarc_spf=(?P<dmarc_spf>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)dmarc_dkim=(?P<dmarc_dkim>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)dmarc=(?P<dmarc>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)dmarc_dom=(?P<dmarc_dom>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)dmarc_log=(?P<dmarc_log>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)dkimdom=(?P<dkimdom>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)dkim=(?P<dkim>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)vade_as=(?P<vade_as>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)vs_verdict=(?P<vs_verdict>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)vs_score=(?P<vs_score>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)vs_class=(?P<vs_class>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)sophos_verdict=(?P<sophos_verdict>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)pab=(?P<pab>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)score=(?P<score>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)subject=(?P<subject>.*)$"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)adkim=(?P<adkim>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)aspf=(?P<aspf>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)p=(?P<policy_result>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)sp=(?P<subdomain_policy>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)pct=(?P<pct>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)rua=(?P<rua>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)fo=(?P<fo>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)ri=(?P<ri>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)i=(?P<report_index>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)n=(?P<report_count>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)SPFDomainScope=(?P<SPFDomainScope>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)SPFResultType=(?P<SPFResultType>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)SPFDomain=(?P<SPFDomain>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)DKIMSelector=(?P<DKIMSelector>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)DKIMDomain=(?P<DKIMDomain>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)DKIMResultType=(?P<DKIMResultType>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)source=(?P<source>[^:]*)"
+        }
+
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_prefix>^|:)override=(?P<override>[^:]*)"
+        }
+
+        // --------------------------------------------------------------------
+        // 5. Extract a usable IPv4 address for GeoIP/network enrichment.
+        // SMTP events use different key names for the client IP.
+        // --------------------------------------------------------------------
+        stage.regex {
+            source = "kv_string"
+            expression = "(?P<kv_host_prefix>^|:)(?P<host_key>fromhost|ip|host|relay|address|source)=(?P<host>[0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3}[.][0-9]{1,3})(?P<host_sep>:| |$)"
+        }
+
+        // --------------------------------------------------------------------
+        // 6. Email bucket.
+        // Prefer rcpt, then from, then envelope.
+        // --------------------------------------------------------------------
+        stage.template {
+            source = "email_raw"
+            template = "{{ if .rcpt }}{{ .rcpt }}{{ else if .from }}{{ .from }}{{ else if .envelope }}{{ .envelope }}{{ end }}"
+        }
+
+        stage.replace {
+            source     = "email_raw"
+            expression = "(<|>)"
+            replace    = ""
+        }
+
+        stage.regex {
+            source = "email_raw"
+            expression = "(?P<email_before_at>[^@]+)"
+        }
+
+        stage.template {
+            source = "email_normalized"
+            template = "{{ TrimSpace (ToLower .email_before_at) }}"
+        }
+
+        stage.template {
+            source = "email_hash"
+            template = "{{ if .email_normalized }}{{ Sha2Hash .email_normalized \"\" }}{{ end }}"
+        }
+
+        stage.regex {
+            source = "email_hash"
+            expression = "^(?P<email_bucket>.{2})"
+        }
+
+        stage.labels {
+            values = {
+                email_bucket = "",
+            }
+        }
+
+        // --------------------------------------------------------------------
+        // 7. GeoIP enrichment.
+        // host is temporarily a label only to gate this match. It is removed
+        // from the final Loki label set and is also packed into the JSON body.
+        // --------------------------------------------------------------------
+        stage.labels {
+            values = {
+                host = "",
+            }
+        }
+
+        stage.match {
+            selector = "{host=~\".+\"}"
+
+            stage.geoip {
+                db      = "/etc/geoip-db/GeoLite2-Country.mmdb"
+                source  = "host"
+                db_type = "country"
+            }
+
+            stage.geoip {
+                db      = "/etc/geoip-db/GeoLite2-ASN.mmdb"
+                source  = "host"
+                db_type = "asn"
+            }
+
+            stage.geoip {
+                db      = "/etc/geoip-db/GeoLite2-City.mmdb"
+                source  = "host"
+                db_type = "city"
+            }
+
+            stage.template {
+                source = "is_private_ip"
+                template = "{{ if regexMatch `^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.)` .host }}true{{ else }}false{{ end }}"
+            }
+
+            stage.template {
+                source = "geoip_country_code"
+                template = "{{ if eq .is_private_ip \"true\" }}GB{{ else }}{{ .geoip_country_code }}{{ end }}"
+            }
+
+            stage.template {
+                source = "geoip_city_name"
+                template = "{{ if eq .is_private_ip \"true\" }}OPWV_WEB{{ else }}{{ .geoip_city_name }}{{ end }}"
+            }
+        }
+
+        // --------------------------------------------------------------------
+        // 8. Network bucket.
+        // --------------------------------------------------------------------
+        stage.template {
+            source = "network_bucket"
+            template = "{{- if and .host (regexMatch \"^([0-9]{1,3}\\\\.){3}[0-9]{1,3}$\" .host) -}}{{- $net := regexReplaceAll \"^([0-9]+\\\\.[0-9]+\\\\.[0-9]+)\\\\.[0-9]+$\" .host \"$1\" -}}{{ printf \"%.1s\" (Sha2Hash $net \"\") }}{{- end -}}"
+        }
+
+        stage.labels {
+            values = {
+                network_bucket = "",
+            }
+        }
+
+        stage.template {
+            source = "event_time"
+            template = "{{ .formatted_date }}"
+        }
+
+        // --------------------------------------------------------------------
+        // 9. Preserve the original whitelist/drop behaviour.
+        // This must happen before stage.pack because stage.pack embeds labels.
+        // --------------------------------------------------------------------
+        stage.match {
+            selector = "{event!~\"SieveRuleMsg|SmtpServerAuthenticationSuccess|AntiAbuseDmarcAggregateReportRecord|SmtpPluginVadeASVadeDetail|SmtpMiscHeader|AntiAbuseDmarcAggregateReportData|SmtpServerUserUnknownFromHostRCPTTO|SmtpServerUnableVerifyMailFrom\"}"
+            action = "drop"
+            drop_counter_reason = "non_essential_log"
+        }
+
+        // --------------------------------------------------------------------
+        // 10. FINAL JSON SERIALIZATION.
+        //
+        // IMPORTANT: event/eventType/eventTypeRoot remain Loki labels so queries
+        // such as {job="smtp-in", event="SieveRuleMsg"} continue to work.
+        // stage.pack guarantees a valid JSON object and safely escapes the
+        // original raw line. The original line is stored in _entry.
+        // ingest_timestamp=false preserves the SMTP timestamp above.
+        // --------------------------------------------------------------------
+        stage.pack {
+            labels = [
+                "hostname",
+                "service",
+                "pid",
+                "minor_pid",
+                "thread_id",
+                "log_level",
+                "event_time",
+                "id",
+                "policy",
+                "checkpoint",
+                "rule",
+                "msg",
+                "action",
+                "from",
+                "rcpt",
+                "envelope",
+                "domain",
+                "user",
+                "name",
+                "folder",
+                "server",
+                "port",
+                "count",
+                "size",
+                "result",
+                "status",
+                "origin",
+                "selector",
+                "algorithm",
+                "type",
+                "entryName",
+                "tag",
+                "header",
+                "value",
+                "abuseid",
+                "ms_value",
+                "geo",
+                "helo",
+                "spffrommatch",
+                "spffrom",
+                "header_from",
+                "dmarc_spf",
+                "dmarc_dkim",
+                "dmarc",
+                "dmarc_dom",
+                "dmarc_log",
+                "dkimdom",
+                "dkim",
+                "vade_as",
+                "vs_verdict",
+                "vs_score",
+                "vs_class",
+                "sophos_verdict",
+                "pab",
+                "score",
+                "subject",
+                "adkim",
+                "aspf",
+                "policy_result",
+                "subdomain_policy",
+                "pct",
+                "rua",
+                "fo",
+                "ri",
+                "report_index",
+                "report_count",
+                "SPFDomainScope",
+                "SPFResultType",
+                "SPFDomain",
+                "DKIMSelector",
+                "DKIMDomain",
+                "DKIMResultType",
+                "source",
+                "override",
+                "host",
+                "kv_string",
+                "email_bucket",
+                "network_bucket",
+                "geoip_country_code",
+                "geoip_city_name",
+                "geoip_country_name",
+                "geoip_continent_name",
+                "geoip_continent_code",
+                "geoip_autonomous_system_number",
+                "geoip_autonomous_system_organization",
+                "geoip_location_latitude",
+                "geoip_location_longitude",
+                "geoip_postal_code",
+                "geoip_timezone",
+                "geoip_subdivision_name",
+                "geoip_subdivision_code",
+            ]
+
+            ingest_timestamp = false
+        }
+    }
+
+    loki.relabel "smtp_drop_label" {
+        rule {
+            action = "labeldrop"
+            regex  = "filename|eventTypeRoot|eventType|host"
+        }
+
+        forward_to = argument.log_receiver.value
+    }
+}

@@ -1,0 +1,23 @@
+logging {
+    level  = "info"
+    format = "json"
+}
+
+// SMTP
+import.file "smtp_processor" {
+  filename = "/etc/alloy/bt-alloy/smtp_processor.alloy"
+}
+
+
+smtp_processor.smtp_filter "smtp_log_processing" {
+    logfilename = "/opt/imail/log/smtp.log"
+    log_receiver = [loki.write.prd_endpoint.receiver]
+}
+
+loki.write "prd_endpoint" {
+    endpoint {
+        url = "https://loki-aa-test-deployed-domain.com/loki/api/v1/push"
+        max_backoff_retries = 5
+    }
+    external_labels = {}
+}

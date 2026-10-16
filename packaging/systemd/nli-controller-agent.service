@@ -1,0 +1,31 @@
+[Unit]
+Description=Nexora Log Intelligence - Main Controller
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=nli
+Group=nli
+EnvironmentFile=/etc/nli/controller.env
+WorkingDirectory=/var/lib/nli-controller
+ExecStart=/usr/bin/nli-controller-agent --config /etc/nli/controller.json
+Restart=on-failure
+RestartSec=5
+UMask=0027
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictRealtime=true
+ReadWritePaths=/var/lib/nli-controller
+ReadOnlyPaths=/etc/nli /usr/share/nli/webview_ver13
+
+[Install]
+WantedBy=multi-user.target

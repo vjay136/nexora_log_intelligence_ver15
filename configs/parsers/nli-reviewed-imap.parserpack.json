@@ -1,0 +1,197 @@
+{
+  "id": "nli_reviewed_imap",
+  "version": "5.0.0",
+  "revision": 1,
+  "sha256": "d30d24a86af32d4609356683e1fb6918f9767adf282ec00ce9114b0033bec2ee",
+  "source_type": "manual",
+  "source_hash": "92940052894200f206ac3df1cb21c986ca0aedb995a0d7a33b4e817c7edbe19e",
+  "author": "nexora-parser-review-board",
+  "review_state": "activated",
+  "created_at": "2026-10-05T00:00:00Z",
+  "activated_at": "2026-10-05T00:00:00Z",
+  "rules": [
+    {
+      "id": "reviewed_imap",
+      "name": "Reviewed IMAP family profile",
+      "priority": 100,
+      "service_selectors": [
+        "imap",
+        "imapserv"
+      ],
+      "stages": [
+        {
+          "id": "family_header",
+          "name": "Reviewed native family header",
+          "type": "static_layout",
+          "config": {
+            "fail_on_missing": true,
+            "tokens": [
+              {
+                "index": 0,
+                "name": "date",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 1,
+                "name": "time",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 2,
+                "name": "hostname",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 3,
+                "name": "service",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 4,
+                "name": "major_pid",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 5,
+                "name": "pid_status",
+                "required": true,
+                "type": "int"
+              },
+              {
+                "index": 6,
+                "name": "minor_pid",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "config": {
+                  "pattern": "^(?P<event_type>[^;]+);(?P<event>[^()]+)\\((?P<code>[^()]+)\\)$"
+                },
+                "index": 7,
+                "name": "_event_capture",
+                "required": true,
+                "type": "regex"
+              },
+              {
+                "index": 8,
+                "name": "_kv_tail",
+                "optional": true,
+                "type": "rest_of_line"
+              }
+            ]
+          },
+          "failure_policy": "reject_rule",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        },
+        {
+          "id": "family_kv",
+          "name": "Reviewed allowlisted family fields",
+          "type": "mixed_kv",
+          "config": {
+            "allow_leading_text": true,
+            "assignment_separators": [
+              "="
+            ],
+            "duplicate_policy": "last",
+            "escape_character": "\\",
+            "input_field": "_kv_tail",
+            "key_aliases": {},
+            "key_allow_patterns": [
+              "^(?:client|clientVersion|cmd|cosId|fldr|fromhost|fromport|haProxyDstPort|host|mbox|msgid|mss|node|nodePort|policy|port|respcode|resptime|rme|sid|size|task|user)$"
+            ],
+            "key_pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+            "max_fields": 256,
+            "max_input_bytes": 1048576,
+            "pair_separators": [
+              ":",
+              "|"
+            ],
+            "quote_characters": "\"'"
+          },
+          "failure_policy": "continue",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        }
+      ],
+      "failure_policy": "reject_rule",
+      "projection_mode": "all",
+      "count_policy": "allow_derived"
+    }
+  ],
+  "resource_limits": {
+    "max_input_bytes": 1048576,
+    "max_fields": 512,
+    "max_captures": 256,
+    "max_regex_length": 4096,
+    "max_stage_count": 50,
+    "max_attempts": 4,
+    "execution_deadline_ms": 5000
+  },
+  "regression_cases": [
+    {
+      "name": "reviewed_imap_representative",
+      "input": "20250320 130000012+0000 server001 imapserv 1536593 3183330 139631346116352 Note;AcctBadPswd(50/6) user=demouser@sample.com:cmd=GI2 AUTHENTICATE gacula@sample.com <password>:fromhost=11.22.33.44:fromport=32519:sid=3b1065ae-058b-11f0-abf2-dd49e74af4b8:respcode=NO:resptime=79:haProxyDstPort=993",
+      "service": "imap",
+      "source_type": "file",
+      "expected_payload": {
+        "cmd": "GI2 AUTHENTICATE gacula@sample.com <password>",
+        "code": "50/6",
+        "date": "20250320",
+        "event": "AcctBadPswd",
+        "event_type": "Note",
+        "fromhost": "11.22.33.44",
+        "fromport": "32519",
+        "haProxyDstPort": "993",
+        "hostname": "server001",
+        "major_pid": "1536593",
+        "minor_pid": "139631346116352",
+        "pid_status": 3183330,
+        "respcode": "NO",
+        "resptime": "79",
+        "service": "imapserv",
+        "sid": "3b1065ae-058b-11f0-abf2-dd49e74af4b8",
+        "time": "130000012+0000",
+        "user": "demouser@sample.com"
+      },
+      "expected_parser": "nli_reviewed_imap/reviewed_imap",
+      "expected_route": "normal"
+    }
+  ],
+  "metadata": {
+    "activation_review": "approved-and-activated",
+    "contract_key_count": "23",
+    "corpus_archive_sha256": "29ed50f36785fdf0f5693ab2a44d3613348b0898ec078567836286fac1781fa6",
+    "corpus_family": "IMAP",
+    "corpus_fixture_sha256": "92940052894200f206ac3df1cb21c986ca0aedb995a0d7a33b4e817c7edbe19e",
+    "effective_key_count": "23",
+    "importer_parity": "not-applicable",
+    "key_contract_sha256": "b91744833395608e8fe46195821b65ee9d27ff0de6b82a927ea3e6c41c19a5f7",
+    "profile_asset_schema": "1",
+    "profile_kind": "product-reviewed-family-contract",
+    "profile_provenance": "explicit-product-owned-contract-not-importer-derived",
+    "review_reference": "sample-logs/keys.expected.json schema 2; records.expected.json schema 1",
+    "reviewed_extension_count": "0",
+    "runtime_order": "100",
+    "service_inference": "record-structure-and-reviewed-service-token"
+  }
+}

@@ -1,0 +1,115 @@
+declare "capd_filter" {
+
+    argument "logfilename" {}
+    argument "log_receiver" {}
+
+    loki.source.file "capd" {
+        targets               = [{__path__ = argument.logfilename.value, "job" = "capd"}]
+        forward_to            = [loki.process.capd.receiver]
+        tail_from_end         = true
+    }
+
+    loki.process "capd" {
+        forward_to = [loki.relabel.capd_drop_label.receiver]
+
+
+        stage.regex {
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2})\\s(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3})\\+(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?P<service>[A-Za-z]+).{1}(?P<pid>[0-9]+).{1}(?P<minor_pid>[0-9]+).{1}(?P<thread_id>[0-9]+).{1}(?P<sev>[A-Za-z]+).{1}(?P<event>[A-Za-z0-9]+).id=(?P<id>[^:]+).username=(?<username>[^:]+).cosId=(?<cosId>[^:]+).auth=(?P<auth>[^:]+).request=(?P<request>[^:]+).user-agent=(?P<useragent>[^:]+).error_id=(?P<error_id>[^:]+).http_code=(?P<http_code>[^:]+).status=(?P<status>[^:]+).resp_time=(?P<resp_time>[^:]+).resp_size=(?P<resp_size>[^:]+)$"
+        }
+
+        stage.regex {
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2})\\s(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3})\\+(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?P<service>[A-Za-z]+).{1}(?P<pid>[0-9]+).{1}(?P<minor_pid>[0-9]+).{1}(?P<thread_id>[0-9]+).{1}(?P<sev>[A-Za-z]+).{1}(?P<event>[A-Za-z0-9]+).id=(?P<id>[^:]+).username=(?<username>[^:]+).cosId=(?<cosId>[^:]+).auth=(?P<auth>[^:]+).request=(?P<request>[^:]+).depth=(?P<depth>[^:]+).error_id=(?P<error_id>[^:]+).client_address=(?P<client_address>[^:]+).user-agent=(?P<useragent>[^:]+)$"
+        }
+
+        stage.regex {
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2})\\s(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3})\\+(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?P<service>[A-Za-z]+).{1}(?P<pid>[0-9]+).{1}(?P<minor_pid>[0-9]+).{1}(?P<thread_id>[0-9]+).{1}(?P<sev>[A-Za-z]+).{1}(?P<event>[A-Za-z0-9;]+).id=(?P<id>[^:]+):username=(?P<username>[^:]+):cosId=(?P<cosId>[^:]+):auth=(?P<auth>[^:]+):request=(?P<request>[^:]+):error_id=(?P<error_id>[^:]+):client_address=(?P<client_address>[^:]+):user-agent=(?P<useragent>[^:]+)$"
+        }
+
+        stage.regex {
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2})\\s(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3})\\+(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?P<service>[A-Za-z]+).{1}(?P<pid>[0-9]+).{1}(?P<minor_pid>[0-9]+).{1}(?P<thread_id>[0-9]+).{1}(?P<sev>[A-Za-z]+).{1}(?P<event>[A-Za-z0-9;]+).id=(?P<id>[^:]+):username=(?P<username>[^:]+):cosId=(?P<cosId>[^:]+):auth=(?P<auth>[^:]+):request=(?P<request>[^:]+):depth=(?P<depth>[^:]+):user-agent=(?P<useragent>[^:]+):error_id=(?P<error_id>[^:]+):http_code=(?P<http_code>[^:]+):status=(?P<status>[^:]+):resp_time=(?P<resp_time>[^:]+):resp_size=(?P<resp_size>[^:]+)$"
+        }
+
+        stage.labels {
+            values = {
+                event = null,
+            }
+        }
+
+        stage.match {
+           selector = "{event!~\"CalDavResponse\"}"
+           action = "drop"
+           drop_counter_reason = "non_essential_log"
+        }
+
+        // Get date in format
+        stage.template {
+            source = "formatted_date"
+            template = "{{.year}}-{{.month}}-{{.day}}T{{.hour}}:{{.min}}:{{.sec}}.{{.ms}}+{{.timezone}}:00"
+        }
+        stage.timestamp {
+            source = "formatted_date"
+            format = "2006-01-02T15:04:05.000Z07:00"
+            action_on_failure = "skip"
+        }
+
+
+        stage.template {
+            source = "output"
+            template = "{\"hostname\":\"{{ .hostname }}\"" +
+                        ",\"sev\":\"{{ .sev }}\"" +
+                        ",\"thread_id\":\"{{ .thread_id }}\"" +
+                        ",\"event\":\"{{ .event }}\"" +
+                        ",\"id\":\"{{ .id }}\"" +
+                        "{{ if .username }},\"user\":\"{{ .username }}\"{{ end }}" +
+                        "{{ if .domain }},\"domain\":\"{{ .domain }}\"{{ end }}" +
+                        "{{ if .depth }},\"depth\":\"{{ .depth }}\"{{ end }}" +
+                        "{{ if .cosId }},\"cosId\":\"{{ .cosId }}\"{{ end }}" +
+                        "{{ if .auth }},\"auth\":\"{{ .auth }}\"{{ end }}" +
+                        "{{ if .request }},\"request\":\"{{ .request }}\"{{ end }}" +
+                        "{{ if .client_address }},\"client_address\":\"{{ .client_address }}\"{{ end }}" +
+                        "{{ if .useragent }},\"user-agent\":\"{{ .useragent }}\"{{ end }}" +
+                        "{{ if .resp_time }},\"resp_time\":{{ .resp_time }}{{ end }}" +
+                        "{{ if .resp_size }},\"resp_size\":{{ .resp_size }}{{ end }}" +
+                        "{{ if .error_id }},\"error_id\":{{ .error_id }}{{ end }}" +
+                        "{{ if .http_code }},\"http_code\":\"{{ .http_code }}\"{{ end }}" +
+                        "{{ if .status }},\"status\":\"{{ .status }}\"{{ end }}" +
+                        "}"
+        }
+
+        stage.replace {
+            source     = "output"
+            expression = "(\\\\)"
+            replace    = "\\\\\\\\"
+        }
+
+        // email bucket
+        stage.template {
+           source = "email_bucket"
+           template = `
+               {{- $auth := ToLower (TrimSpace (Replace (Replace .auth "\"" "" -1) "'" "" -1)) -}}
+
+               {{- if and $auth -}}
+                   {{- $email := printf "%s" $auth -}}
+                   {{ printf "%.2s" (Sha2Hash $email "") }}
+                   {{- end -}}
+               `
+        }
+        stage.labels {
+           values = {
+              email_bucket = "email_bucket",
+           }
+        }
+
+        stage.output {
+            source = "output"
+        }
+    }
+    loki.relabel "capd_drop_label" {
+       rule {
+           action = "labeldrop"
+           regex  = "filename|fromhost|cmd|detected_level|service_name"
+       }
+       forward_to = argument.log_receiver.value
+    }
+}
+

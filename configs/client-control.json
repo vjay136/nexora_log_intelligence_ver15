@@ -1,0 +1,29 @@
+{
+  "controller_url": "",
+  "ca_file": "",
+  "enrollment_token_env": "NLI_ENROLLMENT_TOKEN",
+  "node_token_file": "/var/lib/nli-control-client/node.token",
+  "install_id_file": "/var/lib/nli-control-client/install.id",
+  "journal_file": "/var/lib/nli-control-client/journal.json",
+  "agent_config_path": "/etc/nli/nli.json",
+  "parser_dir": "/var/lib/nli/parsers",
+  "asset_dir": "/var/lib/nli/parser-assets",
+  "metrics_url": "http://127.0.0.1:12380/metrics",
+  "poll_seconds": 15,
+  "telemetry_poll_seconds": 2,
+  "tags": {
+    "environment": "production",
+    "region": "replace-me",
+    "team": "operations"
+  },
+  "allow_insecure_http": false,
+  "allow_package_updates": false,
+  "allowed_package_hosts": [
+    "packages.example.com"
+  ],
+  "package_spool_dir": "/var/cache/nli/packages",
+  "quarantine_path": "/var/log/nli/quarantine.jsonl",
+  "quarantine_raw_upload_enabled": false,
+  "quarantine_raw_upload_max_records": 100,
+  "quarantine_raw_upload_max_bytes": 1048576
+}

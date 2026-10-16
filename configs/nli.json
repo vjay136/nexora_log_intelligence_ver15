@@ -1,0 +1,508 @@
+{
+  "version": 2,
+  "inputs": [
+    {
+      "path": "/var/log/nli/input/auto.log",
+      "service": "auto",
+      "selection": {
+        "mode": "default"
+      },
+      "multiline": {
+        "enabled": true,
+        "max_bytes": 2097152,
+        "max_lines": 10000,
+        "flush_timeout_ms": 4000,
+        "rules": [
+          "java_exception",
+          "python_traceback",
+          "go_panic",
+          "generic_continuation"
+        ]
+      },
+      "mask": {
+        "disable_types": []
+      }
+    },
+    {
+      "path": "/var/log/nli/input/imap.log",
+      "service": "imap",
+      "selection": {
+        "mode": "default"
+      },
+      "multiline": {
+        "enabled": true,
+        "max_bytes": 2097152,
+        "max_lines": 10000,
+        "flush_timeout_ms": 4000,
+        "rules": [
+          "generic_continuation"
+        ]
+      },
+      "mask": {
+        "disable_types": []
+      }
+    },
+    {
+      "path": "/var/log/nli/input/pop.log",
+      "service": "pop",
+      "selection": {
+        "mode": "default"
+      },
+      "multiline": {
+        "enabled": true,
+        "max_bytes": 2097152,
+        "max_lines": 10000,
+        "flush_timeout_ms": 4000,
+        "rules": [
+          "generic_continuation"
+        ]
+      },
+      "mask": {
+        "disable_types": []
+      }
+    },
+    {
+      "path": "/var/log/nli/input/webtop.log",
+      "service": "webtop",
+      "selection": {
+        "mode": "default"
+      },
+      "multiline": {
+        "enabled": true,
+        "max_bytes": 2097152,
+        "max_lines": 10000,
+        "flush_timeout_ms": 4000,
+        "rules": [
+          "generic_continuation"
+        ]
+      },
+      "mask": {
+        "disable_types": []
+      }
+    },
+    {
+      "path": "/var/log/nli/input/mta.log",
+      "service": "mta",
+      "selection": {
+        "mode": "default"
+      },
+      "multiline": {
+        "enabled": true,
+        "max_bytes": 2097152,
+        "max_lines": 10000,
+        "flush_timeout_ms": 4000,
+        "rules": [
+          "generic_continuation"
+        ]
+      },
+      "mask": {
+        "disable_types": []
+      }
+    },
+    {
+      "path": "/var/log/nli/input/smtp-in.log",
+      "service": "smtp-in",
+      "selection": {
+        "mode": "default"
+      },
+      "multiline": {
+        "enabled": true,
+        "max_bytes": 2097152,
+        "max_lines": 10000,
+        "flush_timeout_ms": 4000,
+        "rules": [
+          "generic_continuation"
+        ]
+      },
+      "mask": {
+        "disable_types": []
+      }
+    },
+    {
+      "path": "/var/log/nli/input/smtp-out.log",
+      "service": "smtp-out",
+      "selection": {
+        "mode": "default"
+      },
+      "multiline": {
+        "enabled": true,
+        "max_bytes": 2097152,
+        "max_lines": 10000,
+        "flush_timeout_ms": 4000,
+        "rules": [
+          "generic_continuation"
+        ]
+      },
+      "mask": {
+        "disable_types": []
+      }
+    },
+    {
+      "path": "/var/log/nli/input/pabd.log",
+      "service": "pabd",
+      "selection": {
+        "mode": "default"
+      },
+      "multiline": {
+        "enabled": true,
+        "max_bytes": 2097152,
+        "max_lines": 10000,
+        "flush_timeout_ms": 4000,
+        "rules": [
+          "generic_continuation"
+        ]
+      },
+      "mask": {
+        "disable_types": []
+      }
+    },
+    {
+      "path": "/var/log/nli/input/capd.log",
+      "service": "capd",
+      "selection": {
+        "mode": "default"
+      },
+      "multiline": {
+        "enabled": true,
+        "max_bytes": 2097152,
+        "max_lines": 10000,
+        "flush_timeout_ms": 4000,
+        "rules": [
+          "generic_continuation"
+        ]
+      },
+      "mask": {
+        "disable_types": []
+      }
+    },
+    {
+      "path": "/var/log/nli/input/pss.log",
+      "service": "pss",
+      "selection": {
+        "mode": "default"
+      },
+      "multiline": {
+        "enabled": true,
+        "max_bytes": 2097152,
+        "max_lines": 10000,
+        "flush_timeout_ms": 4000,
+        "rules": [
+          "generic_continuation"
+        ]
+      },
+      "mask": {
+        "disable_types": []
+      }
+    }
+  ],
+  "state_dir": "/var/lib/nli",
+  "outputs": [
+    {
+      "type": "file",
+      "path": "/var/log/nli/quarantine.jsonl",
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "quarantine",
+        "unknown"
+      ]
+    },
+    {
+      "type": "file",
+      "families": [
+        "auto"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "normal",
+        "warning"
+      ],
+      "path_template": "/var/log/nli/output/auto_normalised_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "auto"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "quarantine",
+        "unknown"
+      ],
+      "path_template": "/var/log/nli/output/auto_quarantine_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "imap"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "normal",
+        "warning"
+      ],
+      "path_template": "/var/log/nli/output/imap_normalised_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "imap"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "quarantine",
+        "unknown"
+      ],
+      "path_template": "/var/log/nli/output/imap_quarantine_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "pop"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "normal",
+        "warning"
+      ],
+      "path_template": "/var/log/nli/output/pop_normalised_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "pop"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "quarantine",
+        "unknown"
+      ],
+      "path_template": "/var/log/nli/output/pop_quarantine_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "webtop"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "normal",
+        "warning"
+      ],
+      "path_template": "/var/log/nli/output/webtop-webmail_normalised_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "webtop"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "quarantine",
+        "unknown"
+      ],
+      "path_template": "/var/log/nli/output/webtop-webmail_quarantine_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "mta"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "normal",
+        "warning"
+      ],
+      "path_template": "/var/log/nli/output/mta_normalised_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "mta"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "quarantine",
+        "unknown"
+      ],
+      "path_template": "/var/log/nli/output/mta_quarantine_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "smtp-in"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "normal",
+        "warning"
+      ],
+      "path_template": "/var/log/nli/output/smtp-in_normalised_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "smtp-in"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "quarantine",
+        "unknown"
+      ],
+      "path_template": "/var/log/nli/output/smtp-in_quarantine_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "smtp-out"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "normal",
+        "warning"
+      ],
+      "path_template": "/var/log/nli/output/smtp-out_normalised_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "smtp-out"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "quarantine",
+        "unknown"
+      ],
+      "path_template": "/var/log/nli/output/smtp-out_quarantine_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "pabd"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "normal",
+        "warning"
+      ],
+      "path_template": "/var/log/nli/output/pabd_normalised_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "pabd"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "quarantine",
+        "unknown"
+      ],
+      "path_template": "/var/log/nli/output/pabd_quarantine_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "capd"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "normal",
+        "warning"
+      ],
+      "path_template": "/var/log/nli/output/capd_normalised_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "capd"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "quarantine",
+        "unknown"
+      ],
+      "path_template": "/var/log/nli/output/capd_quarantine_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "pss"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "normal",
+        "warning"
+      ],
+      "path_template": "/var/log/nli/output/pss_normalised_{hour_utc}.jsonl"
+    },
+    {
+      "type": "file",
+      "families": [
+        "pss"
+      ],
+      "max_mb": 500,
+      "max_backups": 5,
+      "routes": [
+        "quarantine",
+        "unknown"
+      ],
+      "path_template": "/var/log/nli/output/pss_quarantine_{hour_utc}.jsonl"
+    }
+  ],
+  "metrics_address": "127.0.0.1:12380",
+  "enrichment": {
+    "country_db": "/etc/geoip-db/GeoLite2-Country.mmdb",
+    "asn_db": "/etc/geoip-db/GeoLite2-ASN.mmdb",
+    "city_db": "/etc/geoip-db/GeoLite2-City.mmdb"
+  },
+  "poll_ms": 500,
+  "source_workers": 0,
+  "stream_thresholds": {
+    "read_lines_per_second": 100000,
+    "bytes_per_second": 10485760,
+    "quarantined_per_second": 1,
+    "queue_depth": 0
+  },
+  "tail_from_end": false,
+  "drain": {
+    "sim_th": 0.5,
+    "depth": 4,
+    "max_children": 100,
+    "max_clusters": 10000
+  },
+  "ai": {
+    "enabled": false,
+    "provider": "ollama",
+    "model": "llama3.2",
+    "endpoint": "http://127.0.0.1:11434",
+    "api_key_env": "NLI_AI_KEY",
+    "max_calls_per_hour": 100,
+    "batch_size": 20,
+    "min_cluster_size": 10,
+    "max_pending_clusters": 1000,
+    "max_sample_bytes": 16384
+  },
+  "replay": {
+    "enabled": false,
+    "source": "/var/log/nli/quarantine.jsonl"
+  }
+}

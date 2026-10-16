@@ -1,0 +1,155 @@
+{
+  "id": "nli_reviewed_webtop_webmail",
+  "version": "5.0.0",
+  "revision": 1,
+  "sha256": "af6f9be537288a7d41cf6eec468be5ede0171452526db17ac69a8e1957afb6d6",
+  "source_type": "manual",
+  "source_hash": "64f692336350aed72a4f476d8645aadd9a788f176807712de58b5fe4143e55f2",
+  "author": "nexora-parser-review-board",
+  "review_state": "activated",
+  "created_at": "2026-10-05T00:00:00Z",
+  "activated_at": "2026-10-05T00:00:00Z",
+  "rules": [
+    {
+      "id": "reviewed_webtop_webmail",
+      "name": "Reviewed WEBTOP/WEBMAIL family profile",
+      "priority": 120,
+      "service_selectors": [
+        "webtop",
+        "webmail"
+      ],
+      "stages": [
+        {
+          "id": "family_header",
+          "name": "Reviewed WEBTOP timestamp and tail",
+          "type": "static_layout",
+          "config": {
+            "fail_on_missing": true,
+            "max_input_bytes": 1048576,
+            "tokens": [
+              {
+                "index": 0,
+                "name": "date",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 1,
+                "name": "time",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 2,
+                "name": "_kv_tail",
+                "required": true,
+                "type": "rest_of_line"
+              }
+            ]
+          },
+          "failure_policy": "reject_rule",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        },
+        {
+          "id": "family_kv",
+          "name": "Reviewed WEBTOP logfmt fields",
+          "type": "logfmt",
+          "config": {
+            "allow_leading_text": false,
+            "assignment_separators": [
+              "="
+            ],
+            "duplicate_policy": "last",
+            "escape_character": "\\",
+            "input_field": "_kv_tail",
+            "key_aliases": {},
+            "key_allow_patterns": [
+              "^(?:action|api|application|arg0|arg1|arg3|attr\\.user\\.FirstName|attr\\.user\\.LastName|bcc|cc|clientid|displayName|duration|email|error|firstName|fromEmail|fromName|hostname|lastName|messageSelection\\.ranges|messageSelection\\.sort|messageSelection\\.uidNext|messageSelection\\.uidsCount|method|path|previousemail|remoteaddr|remoteport|servername|service|sessionid|smtphost|smtpport|sort|to|useragent|usercosid|userid|username)$"
+            ],
+            "key_pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+            "max_fields": 256,
+            "max_input_bytes": 1048576,
+            "pair_separators": [
+              " ",
+              "\t"
+            ],
+            "quote_characters": "\"'"
+          },
+          "failure_policy": "reject_rule",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        }
+      ],
+      "failure_policy": "reject_rule",
+      "projection_mode": "all",
+      "count_policy": "allow_derived"
+    }
+  ],
+  "resource_limits": {
+    "max_input_bytes": 1048576,
+    "max_fields": 512,
+    "max_captures": 256,
+    "max_regex_length": 4096,
+    "max_stage_count": 50,
+    "max_attempts": 4,
+    "execution_deadline_ms": 5000
+  },
+  "regression_cases": [
+    {
+      "name": "reviewed_webtop-webmail_representative",
+      "input": "2025-07-22 10:00:00:001+0100 hostname=\"aaa-gmailweb001\" servername=\"email.gmail.com\" api=\"mail\" remoteaddr=\"11.22.33.44\" useragent=\"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/11.22.33.44 Safari/537.36\" sessionid=\"c02OXHcbjGEv8jWYUHiidV-upww\" userid=\"ancient.art@sample.com\" usercosid=\"all_done\" username=\"ancient.art@sample.com\" service=\"paf\" action=\"readSortedMsgs\" duration=\"278\" ",
+      "service": "webtop",
+      "source_type": "file",
+      "expected_payload": {
+        "action": "readSortedMsgs",
+        "api": "mail",
+        "date": "2025-07-22",
+        "duration": "278",
+        "hostname": "aaa-gmailweb001",
+        "remoteaddr": "11.22.33.44",
+        "servername": "email.gmail.com",
+        "service": "paf",
+        "sessionid": "c02OXHcbjGEv8jWYUHiidV-upww",
+        "time": "10:00:00:001+0100",
+        "useragent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/11.22.33.44 Safari/537.36",
+        "usercosid": "all_done",
+        "userid": "ancient.art@sample.com",
+        "username": "ancient.art@sample.com"
+      },
+      "expected_parser": "nli_reviewed_webtop_webmail/reviewed_webtop_webmail",
+      "expected_route": "normal"
+    }
+  ],
+  "metadata": {
+    "activation_review": "approved-and-activated",
+    "contract_key_count": "40",
+    "corpus_archive_sha256": "29ed50f36785fdf0f5693ab2a44d3613348b0898ec078567836286fac1781fa6",
+    "corpus_family": "WEBTOP/WEBMAIL",
+    "corpus_fixture_sha256": "64f692336350aed72a4f476d8645aadd9a788f176807712de58b5fe4143e55f2",
+    "effective_key_count": "40",
+    "importer_parity": "not-applicable",
+    "key_contract_sha256": "bbf661ec896aed7cdfebcd956af6a26f902bdf6e8e78560808229b12b285f4fb",
+    "profile_asset_schema": "1",
+    "profile_kind": "product-reviewed-family-contract",
+    "profile_provenance": "explicit-product-owned-contract-not-importer-derived",
+    "review_reference": "sample-logs/keys.expected.json schema 2; records.expected.json schema 1",
+    "reviewed_extension_count": "0",
+    "runtime_order": "120",
+    "service_inference": "record-structure-and-reviewed-service-token"
+  }
+}

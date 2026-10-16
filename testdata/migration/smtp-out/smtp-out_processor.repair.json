@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "source_file": "smtp-out_processor.alloy",
+  "original_sha256": "5daaf08766af0a6dc4327db79bdf689dd7df5a7fd9bdf35fb8233fa869b43332",
+  "repaired_sha256": "24ab85c72bb752a0d39c5be9d0096ffd0b8dd1ec2c6e30fa61af5dd2b8adc04f",
+  "repair": "removed the unmatched final closing brace and its CRLF",
+  "removed_original_line": 554,
+  "removed_bytes_hex": "7d0d0a",
+  "rationale": "The declare block is closed at line 553; line 554 has no corresponding opening block. Removing only that final brace makes the River syntax balanced without changing any pipeline construct."
+}

@@ -1,0 +1,553 @@
+declare "smtp_filter" {
+
+    argument "logfilename" {}
+    argument "log_receiver" {}
+
+    loki.source.file "smtp" {
+        targets               = [{__path__ = argument.logfilename.value, "job" = "smtp-out"}]
+        forward_to            = [loki.process.smtp.receiver]
+    }
+
+    loki.process "smtp" {
+        forward_to = [loki.relabel.smtp_drop_label.receiver]
+
+        stage.regex {
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2}).(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3}).(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?P<service>[A-Za-z]+).{1}(?P<pid>[0-9]+).{1}(?P<minor_pid>[0-9]+).{1}(?P<thread_id>[0-9]+).{1}(?P<log_level>[A-Za-z]+).{1}(?P<event>[A-Za-z]+)\\([^)]*\\)\\s(?<kv_string>.*)"
+        }
+
+        // SieveRuleMsg type-1
+        stage.regex {
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2}).(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3}).(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?P<service>[A-Za-z]+).{1}(?P<pid>[0-9]+).{1}(?P<minor_pid>[0-9]+).{1}(?P<thread_id>[0-9]+).{1}(?P<log_level>[A-Za-z]+).{1}(?P<event>[A-Za-z]+)\\([^)]*\\)\\sid=(?P<id>[^:]+).policy=(?P<policy>[^:]+).checkpoint=(?P<checkpoint>[^:]+).rule=(?P<rule>[^:]+).msg=(?P<msg>[^=]+)=eventType;(?P<eventType>[^|]+).(?<kv_string>.*)"
+        }
+
+        // Get date in format
+        stage.template {
+            source = "formated_date"
+            template = "{{.year}}-{{.month}}-{{.day}}T{{.hour}}:{{.min}}:{{.sec}}.{{.ms}}+{{.timezone}}:00"
+        }
+        stage.timestamp {
+           source = "formated_date"
+            format = "2006-01-02T15:04:05.000Z07:00"
+            action_on_failure = "skip"
+        }
+
+        stage.labels {
+            values = {
+                event = null,
+                policy = null,
+            }
+        }
+
+        stage.match {
+            selector = "{event=\"SieveRuleMsg\"}"
+            stage.regex {
+                source     = "eventType"
+                expression = "^(?P<eventTypeRoot>[^: ]+)"
+            }
+        }
+
+        stage.labels {
+            values = {
+                eventType = null,
+                eventTypeRoot = null,
+            }
+        }
+
+        stage.match {
+            selector = "{event=~\"SmtpClientClose\"}"
+            stage.replace {
+                source    = "kv_string"
+                expression = "(================)"
+                replace   = " "
+            }
+        }
+
+        stage.match {
+            selector = "{event=~\"SmtpServerAuthenticationSuccess|SmtpServerUserUnknownFromHostRCPTTO|SmtpServerSMTPAUTH|SmtpServerAuthenticationFailure|SmtpClientRelayRecipient|SmtpClientRelayLocalIP|SmtpPluginVadeASVadeDetail|AntiAbuseTiming|LoggingHeader|LoggingSuppression|SmtpClientAuthenticationError|SmtpClientClose|SmtpClientConnectionLostAfterDataTransmitted|SmtpClientConnectionLostDataCmdInterResponse|SmtpClientConnectionLostMailTransaction|SmtpClientConnectionLostWaitingMailResp|SmtpClientConnectionLostWaitingRCPT|SmtpClientConnectionLostWhileWaiting|SmtpClientConnectionLostWhileWaitingTrans|SmtpClientConnectionOpenedLocalIP|SmtpClientConnectionReusedLocalIP|SmtpClientDATAGotReply|SmtpClientDataInterReply|SmtpClientDeferredHostDown|SmtpClientDKIMSign|SmtpClientLostConnectionWhileTransmitting|SmtpClientMXLookupFailed|SmtpClientMXLookupTemporarilyFailed|SmtpClientMXMailRoutingIncorrect|SmtpClientMXNoRecords|SmtpClientOpenAssocError|SmtpClientOpenAssocReply|SmtpClientQueueTime|SmtpClientRCPTGotReply|SmtpClientRCPTGotReplyStateNot0|SmtpClientRCPTToReply|SmtpClientRelayOriginator|SmtpClientRelayTxBytesSmtpClientRelayTxBytesThroughputSmtpClientRelayTxMsgBytesSmtpClientRelayTxMsgBytesThroughputSmtpClientTLSNegotiationFailedSmtpClientTransactionMailFromReplySmtpClientUseSSLSmtpDeliverAttemptSubmissionSmtpDeliverAttemptSubmissionWithStatusSmtpDeliverSubmissionSmtpDomainUpsLoadFailedSmtpDSNMsgDiagnostic1SmtpDSNMsgDiagnostic2SmtpDSNMsgOptMsgTrk1SmtpDSNMsgOptMsgTrk2SmtpDSNMsgOptMsgTrk3SmtpDSNMsgRecipientSpecificAttr2SmtpDSNMsgRecipientSpecificAttr3SmtpDSNMsgTrackingAttrSmtpDSNSuppressed\"}"
+            stage.replace {
+                source    = "kv_string"
+                expression = "(:)"
+                replace   = "\",\""
+            }
+            stage.replace {
+                source    = "kv_string"
+                expression = "(=)"
+                replace   = "\":\""
+            }
+
+            stage.template {
+                 source = "json_kv_string"
+                 template = "{\"{{ .kv_string }}\"}"
+            }
+
+            // Create email_bucket here for SmtpServerAuthenticationSuccess
+            stage.match {
+                selector = "{event=~\"SmtpServerAuthenticationSuccess\"}"
+                stage.json {
+                   source = "json_kv_string"
+                   expressions = {
+                      user = "auth_user",
+                   }
+                }
+                stage.template {
+                   source   = "user"
+                   template = "{{ TrimSpace (ToLower .Value) }}"
+                }
+                stage.template {
+                   source   = "user"
+                   template = `{{ Sha2Hash .Value "" }}`
+                }
+                stage.regex {
+                   source     = "user"
+                   expression = "^(?P<email_bucket>.{2})"
+                }
+                stage.labels {
+                   values = {
+                      email_bucket = "email_bucket",
+                   }
+                }
+            }
+
+            // Event specific cleanup
+            stage.match {
+                selector = "{event=~\"SmtpClientRelayOriginator\"}"
+                stage.replace {
+                    source    = "kv_string"
+                    expression = "(InternalId\":\")"
+                    replace   = "InternalId="
+                }
+                stage.replace {
+                    source    = "kv_string"
+                    expression = "(Hostname\":\")"
+                    replace   = "Hostname="
+                }
+                stage.regex {
+                    expression = "originator\":\"(?P<originator_val>[^,]+)"
+                    source = "kv_string"
+                }
+                stage.replace {
+                    source    = "originator_val"
+                    expression = "(\":\")"
+                    replace   = "="
+                }
+                stage.replace {
+                    source    = "kv_string"
+                    expression = "originator\":\"(?P<originator_val>[^,]+)"
+                    replace   = "{{ .originator_val }}"
+                }
+            }
+            stage.match {
+               selector = "{event=~\"SmtpClientRelayRecipient\"}"
+               stage.regex {
+                   expression = "name\":\"(?P<name_val>[^}]+)"
+                   source = "kv_string"
+               }
+               stage.replace {
+                   source    = "name_val"
+                   expression = "(\":\")"
+                   replace   = "="
+               }
+               stage.replace {
+                   source    = "kv_string"
+                   expression = "name\":\"(?P<name_val>[^}]+)"
+                   replace   = "{{ .name_val }}"
+               }
+            }
+
+            stage.json {
+                source = "json_kv_string"
+                expressions = {
+                   host = "",
+                }
+            }
+
+            stage.labels {
+                values = {
+                  host = "",
+                }
+            }
+
+            stage.match {
+                selector = "{host=~\".+\"}"
+                stage.geoip {
+                    db = "/etc/geoip-db/GeoLite2-Country.mmdb"
+                    source  = "host"
+                    db_type = "country"
+                }
+                stage.geoip {
+                    db = "/etc/geoip-db/GeoLite2-ASN.mmdb"
+                    source  = "host"
+                    db_type = "asn"
+                }
+                stage.geoip {
+                    db = "/etc/geoip-db/GeoLite2-City.mmdb"
+                    source  = "host"
+                    db_type = "city"
+                }
+
+                stage.template {
+                    source = "is_private_ip"
+                    template = "{{ if regexMatch `^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.)` .host }}true{{ else }}false{{ end }}"
+                }
+                stage.template {
+                    source = "geoip_country_code"
+                    template = "{{ if eq .is_private_ip \"true\" }}GB{{ else }}{{ .geoip_country_code }}{{ end }}"
+                }
+                stage.template {
+                    source = "geoip_city_name"
+                    template = "{{ if eq .is_private_ip \"true\" }}OPWV_WEB{{ else }}{{ .geoip_city_name }}{{ end }}"
+                }
+
+                stage.template {
+                    source = "geo_details"
+                    template = "\"geoip_country_code\": \"{{ .geoip_country_code }}\", \"geoip_city_name\": \"{{ .geoip_city_name }}\", \"geoip_org\": \"{{ .geoip_autonomous_system_organization }}\""
+                }
+                stage.template {
+                    source = "network_bucket"
+                    template = `
+                        {{- if and .host (regexMatch "^([0-9]{1,3}\\.){3}[0-9]{1,3}$" .host) -}}
+                            {{- $net := regexReplaceAll "^([0-9]+\\.[0-9]+\\.[0-9]+)\\.[0-9]+$" .host "$1" -}}
+                            {{ printf "%.1s" (Sha2Hash $net "") }}
+                        {{- end -}}
+                    `
+                }
+                stage.labels {
+                    values = {
+                        network_bucket = "network_bucket",
+                    }
+                }
+
+            }
+
+
+            stage.template {
+                source = "formatted_event"
+                template = "{\"hostname\": \"{{ .hostname }}\", \"service\": \"{{ .service }}\", \"pid\": \"{{ .pid }}\", \"minor_pid\": \"{{ .minor_pid }}\", \"thread_id\": \"{{ .thread_id }}\", \"log_level\": \"{{ .log_level }}\", \"event\": \"{{ .event }}\", \"{{ .kv_string }}\"{{ if .geo_details }},{{ .geo_details }}{{ end }}}"
+            }
+
+            stage.replace {
+               source    = "formatted_event"
+               expression = "(\\\\3a)"
+               replace   = "\\3a"
+            }
+
+            stage.replace {
+                source     = "formatted_event"
+                expression = "(\\\\)"
+                replace    = "\\\\"
+            }
+
+            stage.output {
+                source = "formatted_event"
+            }
+        }
+
+        stage.match {
+            selector = "{event=\"SieveRuleMsg\", eventTypeRoot=~\"misreport|LARGEMESSAGE\"}"
+            stage.replace {
+               source    = "kv_string"
+               expression = "(:)"
+               replace   = " "
+            }
+
+            stage.replace {
+               source    = "kv_string"
+               expression = "(value=)"
+               replace   = "\",\"value:"
+            }
+
+            stage.replace {
+               source    = "kv_string"
+               expression = "(;)"
+               replace   = ":"
+            }
+
+            stage.replace {
+               source    = "kv_string"
+               expression = "(:)"
+               replace   = "\":\""
+            }
+            stage.replace {
+               source    = "kv_string"
+               expression = "(\\|+)"
+               replace   = "\",\""
+            }
+
+            // value can contain | or other char that could break json , so fix it e.g "sav_vdct":"clean","vade_vdct":"spam","vade_score":"110","vade_class":"spam ","value":"Extra 20% OFF Outlet "," Top Picks"}
+            // START CODE
+            stage.regex {
+                source = "kv_string"
+                expression = "auth_user\":\"(?P<auth_user>[^\"]*)"
+            }
+            stage.template {
+                source   = "auth_user"
+                template = "{{ ToLower .Value }}"
+            }
+            stage.regex {
+                source = "kv_string"
+                expression = "sender\":\"(?P<sender>[^\"]*)"
+            }
+            stage.template {
+                source   = "sender"
+                template = "{{ ToLower .Value }}"
+            }
+
+            stage.regex {
+                source = "kv_string"
+                expression = "rcpt\":\"(?P<rcpt>[^\"]*)"
+            }
+            stage.regex {
+               source = "rcpt"
+               expression = "<(?P<rcpt>[^>]+)>"
+            }
+            stage.template {
+                source   = "rcpt"
+                template = "{{ ToLower .Value }}"
+            }
+            // ######## Email bucket
+            // Normalize auth_user, sender and rcpt to lowercase first.
+            stage.regex {
+                source     = "kv_string"
+                expression = "auth_user\":\"(?P<auth_user>[^\"]*)"
+            }
+
+            stage.template {
+                source   = "auth_user"
+                template = "{{ ToLower .Value }}"
+            }
+
+            stage.regex {
+                source     = "auth_user"
+                expression = "^(?P<auth_username>[^@]+)@"
+            }
+
+            stage.template {
+                source = "auth_username"
+                template = `
+                    {{- if regexMatch "\\.(t21|t1)$" .Value -}}
+                        {{- regexReplaceAll "\\.(t21|t1)$" .Value "" -}}
+                    {{- else -}}
+                        {{- .Value -}}
+                    {{- end -}}
+                `
+            }
+
+            stage.regex {
+                source     = "kv_string"
+                expression = "sender\":\"(?P<sender>[^\"]*)"
+            }
+
+            stage.template {
+                source   = "sender"
+                template = "{{ ToLower .Value }}"
+            }
+
+            stage.regex {
+                source     = "sender"
+                expression = "^(?P<sender_username>[^@]+)@"
+            }
+
+            stage.template {
+                source = "sender_username"
+                template = `
+                    {{- if regexMatch "\\.(t21|t1)$" .Value -}}
+                        {{- regexReplaceAll "\\.(t21|t1)$" .Value "" -}}
+                    {{- else -}}
+                        {{- .Value -}}
+                    {{- end -}}
+                `
+            }
+
+            stage.regex {
+                source     = "kv_string"
+                expression = "rcpt\":\"(?P<rcpt>[^\"]*)"
+            }
+
+            stage.regex {
+                source     = "rcpt"
+                expression = "<(?P<rcpt>[^>]+)>"
+            }
+
+            stage.template {
+                source   = "rcpt"
+                template = "{{ ToLower .Value }}"
+            }
+
+            stage.regex {
+                source     = "rcpt"
+                expression = "^(?P<rcpt_username>[^@]+)@"
+            }
+
+            stage.template {
+                source = "rcpt_username"
+                template = `
+                    {{- if regexMatch "\\.(t21|t1)$" .Value -}}
+                        {{- regexReplaceAll "\\.(t21|t1)$" .Value "" -}}
+                    {{- else -}}
+                        {{- .Value -}}
+                    {{- end -}}
+                `
+            }
+
+            // Check in priority order:
+            // 1. auth_user
+            // 2. sender
+            // 3. rcpt
+            // If the current field is missing or is not one of the
+            // allowed BT domains, continue to the next field.
+            stage.template {
+                source = "bucket_tmp"
+                template = `
+                    {{- if .auth_user -}}
+                        {{- if contains "@btinternet.com" .auth_user -}}
+                            {{- printf "%.2s" (Sha2Hash .auth_username "") -}}
+                        {{- else if contains "@talk21.com" .auth_user -}}
+                            {{- printf "%.2s" (Sha2Hash .auth_username "") -}}
+                        {{- else if contains "@btopenworld.com" .auth_user -}}
+                            {{- printf "%.2s" (Sha2Hash .auth_username "") -}}
+                        {{- else if .sender -}}
+                            {{- if contains "@btinternet.com" .sender -}}
+                                {{- printf "%.2s" (Sha2Hash .sender_username "") -}}
+                            {{- else if contains "@talk21.com" .sender -}}
+                                {{- printf "%.2s" (Sha2Hash .sender_username "") -}}
+                            {{- else if contains "@btopenworld.com" .sender -}}
+                                {{- printf "%.2s" (Sha2Hash .sender_username "") -}}
+                            {{- else if .rcpt -}}
+                                {{- if contains "@btinternet.com" .rcpt -}}
+                                    {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                                {{- else if contains "@talk21.com" .rcpt -}}
+                                    {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                                {{- else if contains "@btopenworld.com" .rcpt -}}
+                                    {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                                {{- else -}}
+                                    common
+                                {{- end -}}
+                            {{- else -}}
+                                common
+                            {{- end -}}
+                        {{- else if .rcpt -}}
+                            {{- if contains "@btinternet.com" .rcpt -}}
+                                {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                            {{- else if contains "@talk21.com" .rcpt -}}
+                                {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                            {{- else if contains "@btopenworld.com" .rcpt -}}
+                                {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                            {{- else -}}
+                                common
+                            {{- end -}}
+                        {{- else -}}
+                            common
+                        {{- end -}}
+
+                    {{- else if .sender -}}
+                        {{- if contains "@btinternet.com" .sender -}}
+                            {{- printf "%.2s" (Sha2Hash .sender_username "") -}}
+                        {{- else if contains "@talk21.com" .sender -}}
+                            {{- printf "%.2s" (Sha2Hash .sender_username "") -}}
+                        {{- else if contains "@btopenworld.com" .sender -}}
+                            {{- printf "%.2s" (Sha2Hash .sender_username "") -}}
+                        {{- else if .rcpt -}}
+                            {{- if contains "@btinternet.com" .rcpt -}}
+                                {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                            {{- else if contains "@talk21.com" .rcpt -}}
+                                {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                            {{- else if contains "@btopenworld.com" .rcpt -}}
+                                {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                            {{- else -}}
+                                common
+                            {{- end -}}
+                        {{- else -}}
+                            common
+                        {{- end -}}
+
+                    {{- else if .rcpt -}}
+                        {{- if contains "@btinternet.com" .rcpt -}}
+                            {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                        {{- else if contains "@talk21.com" .rcpt -}}
+                            {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                        {{- else if contains "@btopenworld.com" .rcpt -}}
+                            {{- printf "%.2s" (Sha2Hash .rcpt_username "") -}}
+                        {{- else -}}
+                            common
+                        {{- end -}}
+
+                    {{- else -}}
+                        common
+                    {{- end -}}
+                `
+            }
+
+            stage.labels {
+                values = {
+                   email_bucket = "bucket_tmp",
+                }
+            }
+            // End of code
+            // Create network_bucket for SieveRuleMsg using fromhost
+            stage.regex {
+                source = "kv_string"
+                expression = "fromhost[\":=]+(?P<fromhost>[0-9]{1,3}(\\.[0-9]{1,3}){3})"
+            }
+
+            stage.template {
+                source = "network_bucket"
+                template = `
+                    {{- if and .fromhost (regexMatch "^([0-9]{1,3}\\.){3}[0-9]{1,3}$" .fromhost) -}}
+                        {{- $net := regexReplaceAll "^([0-9]+\\.[0-9]+\\.[0-9]+)\\.[0-9]+$" .fromhost "$1" -}}
+                        {{ printf "%.1s" (Sha2Hash $net "") }}
+                    {{- end -}}
+                `
+            }
+
+            stage.labels {
+                values = {
+                    network_bucket = "network_bucket",
+                }
+            }
+
+            stage.template {
+                source = "SieveRuleMsg_label"
+                template = "{\"hostname\": \"{{ .hostname }}\", \"service\": \"{{ .service }}\", \"pid\": \"{{ .pid }}\", \"minor_pid\": \"{{ .minor_pid }}\", \"thread_id\": \"{{ .thread_id }}\", \"log_level\": \"{{ .log_level }}\", \"event\": \"{{ .event }}\", \"id\": \"{{ .id }}\", \"policy\": \"{{ .policy }}\", \"checkpoint\": \"{{ .checkpoint }}\", \"rule\": \"{{ .rule }}\", \"msg\": \"{{ .msg }}\", \"eventType\": \"{{ .eventType }}\", \"{{ .kv_string }}\"}"
+            }
+            stage.output {
+                source = "SieveRuleMsg_label"
+            }
+        }
+        stage.match {
+            selector = "{event=\"SieveRuleMsg\", eventTypeRoot=~\"FN_From|FN_Subject|FP_Subject|FP_From\"}"
+            stage.replace {
+                source     = "eventType"
+                expression = "(\")"
+                replace    = " "
+            }
+            stage.template {
+                source = "SieveRuleMsg_type2"
+                template = "{\"hostname\": \"{{ .hostname }}\", \"service\": \"{{ .service }}\", \"pid\": \"{{ .pid }}\", \"minor_pid\": \"{{ .minor_pid }}\", \"thread_id\": \"{{ .thread_id }}\", \"log_level\": \"{{ .log_level }}\", \"event\": \"{{ .event }}\", \"id\": \"{{ .id }}\", \"policy\": \"{{ .policy }}\", \"checkpoint\": \"{{ .checkpoint }}\", \"rule\": \"{{ .rule }}\", \"msg\": \"{{ .msg }}\", \"eventType\": \"{{ .eventType }}\"}"
+            }
+            stage.labels {
+                values = {
+                   email_bucket = "common",
+                }
+            }
+            stage.output {
+                source = "SieveRuleMsg_type2"
+            }
+        }
+
+        stage.match {
+            //selector = "{event!~\"SieveRuleMsg|SmtpServerAuthenticationSuccess|SmtpServerUserUnknownFromHostRCPTTO|SmtpServerSMTPAUTH|SmtpServerAuthenticationFailure|SmtpClientRelayLocalIP|SmtpClientRelayRecipient|SmtpPluginVadeASVadeDetail|AntiAbuseTiming|LoggingHeader|LoggingSuppression|SmtpClientAuthenticationError|SmtpClientClose|SmtpClientConnectionLostAfterDataTransmitted|SmtpClientConnectionLostDataCmdInterResponse|SmtpClientConnectionLostMailTransaction|SmtpClientConnectionLostWaitingMailResp|SmtpClientConnectionLostWaitingRCPT|SmtpClientConnectionLostWhileWaiting|SmtpClientConnectionLostWhileWaitingTrans|SmtpClientConnectionOpenedLocalIP|SmtpClientConnectionReusedLocalIP|SmtpClientDATAGotReply|SmtpClientDataInterReply|SmtpClientDeferredHostDown|SmtpClientDKIMSign|SmtpClientLostConnectionWhileTransmitting|SmtpClientMXLookupFailed|SmtpClientMXLookupTemporarilyFailed|SmtpClientMXMailRoutingIncorrect|SmtpClientMXNoRecords|SmtpClientOpenAssocError|SmtpClientOpenAssocReply|SmtpClientQueueTime|SmtpClientRCPTGotReply|SmtpClientRCPTGotReplyStateNot0|SmtpClientRCPTToReply|SmtpClientRelayOriginator|SmtpClientRelayTxBytesSmtpClientRelayTxBytesThroughputSmtpClientRelayTxMsgBytesSmtpClientRelayTxMsgBytesThroughputSmtpClientTLSNegotiationFailedSmtpClientTransactionMailFromReplySmtpClientUseSSLSmtpDeliverAttemptSubmissionSmtpDeliverAttemptSubmissionWithStatusSmtpDeliverSubmissionSmtpDomainUpsLoadFailedSmtpDSNMsgDiagnostic1SmtpDSNMsgDiagnostic2SmtpDSNMsgOptMsgTrk1SmtpDSNMsgOptMsgTrk2SmtpDSNMsgOptMsgTrk3SmtpDSNMsgRecipientSpecificAttr2SmtpDSNMsgRecipientSpecificAttr3SmtpDSNMsgTrackingAttrSmtpDSNSuppressed\"}"
+            // 1st Phase - Ingest only log events available in ELK
+            selector = "{event!~\"SieveRuleMsg|SmtpServerAuthenticationSuccess|SmtpServerUserUnknownFromHostRCPTTO|SmtpServerSMTPAUTH|SmtpServerAuthenticationFailure|SmtpPluginVadeASVadeDetailSmtpMiscHeader\"}"
+            action = "drop"
+            drop_counter_reason = "non_essential_log"
+        }
+   }
+
+   loki.relabel "smtp_drop_label" {
+       rule {
+           action = "labeldrop"
+           regex  = "filename|eventTypeRoot|eventType|host"
+       }
+       forward_to = argument.log_receiver.value
+   }
+}

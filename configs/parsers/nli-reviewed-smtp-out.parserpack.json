@@ -1,0 +1,224 @@
+{
+  "id": "nli_reviewed_smtp_out",
+  "version": "5.0.0",
+  "revision": 1,
+  "sha256": "f1248d40f34c731fbc31a3b215d70e5d769e3448cab38548468947c66d31a198",
+  "source_type": "manual",
+  "source_hash": "b784f584655f5fe39c362267a05dec9687cd564148ac8afd6cccd0677cb3d5b6",
+  "author": "nexora-parser-review-board",
+  "review_state": "activated",
+  "created_at": "2026-10-05T00:00:00Z",
+  "activated_at": "2026-10-05T00:00:00Z",
+  "rules": [
+    {
+      "id": "reviewed_smtp_out",
+      "name": "Reviewed SMTP-OUT family profile",
+      "priority": 170,
+      "service_selectors": [
+        "smtp-out",
+        "smtp"
+      ],
+      "stages": [
+        {
+          "id": "family_header",
+          "name": "Reviewed native family header",
+          "type": "static_layout",
+          "config": {
+            "fail_on_missing": true,
+            "tokens": [
+              {
+                "index": 0,
+                "name": "date",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 1,
+                "name": "time",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 2,
+                "name": "hostname",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 3,
+                "name": "service",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 4,
+                "name": "major_pid",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "index": 5,
+                "name": "pid_status",
+                "required": true,
+                "type": "int"
+              },
+              {
+                "index": 6,
+                "name": "minor_pid",
+                "required": true,
+                "type": "string"
+              },
+              {
+                "config": {
+                  "pattern": "^(?P<event_type>[^;]+);(?P<event>[^()]+)\\((?P<code>[^()]+)\\)$"
+                },
+                "index": 7,
+                "name": "_event_capture",
+                "required": true,
+                "type": "regex"
+              },
+              {
+                "index": 8,
+                "name": "_kv_tail",
+                "optional": true,
+                "type": "rest_of_line"
+              }
+            ]
+          },
+          "failure_policy": "reject_rule",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        },
+        {
+          "id": "family_kv",
+          "name": "Reviewed allowlisted family fields",
+          "type": "mixed_kv",
+          "config": {
+            "allow_leading_text": true,
+            "assignment_separators": [
+              "=",
+              ";"
+            ],
+            "duplicate_policy": "last",
+            "escape_character": "\\",
+            "input_field": "_kv_tail",
+            "key_aliases": {
+              "Hostname": "input.Hostname",
+              "code": "input.code",
+              "source": "input.source"
+            },
+            "key_allow_patterns": [
+              "^(?:Hostname|InternalId|abuseid|action|address|algorithm|auth|auth_fail|auth_ok|auth_tries|auth_user|blockedfroms|checkpoint|checkpoint_kv|cid|cipher|client|code|command|connclass|connection|connection_auth_tries|connection_count|connrespmsec|context|datarespmsec|delay|description|diaginfo|diagnostic|dkim|dmarc_dom|domain|eomrespmsec|error|errorDescription|fn_report_dmarc_dom_hour|fn_report_domain_hour|fn_report_ip_hour|fn_report_sender_ident_hour|folder|from|from_block|from_host|fromhost|geo|hash|helo|host|host_kv|id|id_kv|ident|ip|local_port|localip|logid|mailrespmsec|mechanism|message|method|ms|msg|msg_ip|msg_kv|name|new_address|nexthop|num_helo|option|originator|out_blockedfroms|policy|policy_kv|queuetimesec|rbl|rcpt|rcptrespmsec|reason|recipient|relay|remoteMTA|reply|rule|rule_kv|rxbytes|rxtime|sample|sample_always_keep|sender|sender_auth_mailbox|sender_ident|sender_ident_src|server|size|source|status|tls|txbytes|txmsgbytes|txmsgtime|txtime|user|value|version)$"
+            ],
+            "key_pattern": "^[A-Za-z_][A-Za-z0-9_.-]*$",
+            "max_fields": 256,
+            "max_input_bytes": 1048576,
+            "pair_separators": [
+              ":",
+              "|"
+            ],
+            "quote_characters": "\"'"
+          },
+          "failure_policy": "continue",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        },
+        {
+          "id": "family_types",
+          "name": "Reviewed SMTP field types",
+          "type": "type_conversion",
+          "config": {
+            "conversions": {
+              "auth_fail": "int",
+              "auth_ok": "bool",
+              "auth_tries": "int",
+              "score": "int"
+            }
+          },
+          "failure_policy": "continue",
+          "resource_limits": {
+            "max_input_bytes": 0,
+            "max_fields": 0,
+            "max_captures": 0,
+            "max_regex_length": 0,
+            "max_stage_count": 0,
+            "max_attempts": 0,
+            "execution_deadline_ms": 0
+          }
+        }
+      ],
+      "failure_policy": "reject_rule",
+      "projection_mode": "all",
+      "count_policy": "allow_derived"
+    }
+  ],
+  "resource_limits": {
+    "max_input_bytes": 1048576,
+    "max_fields": 512,
+    "max_captures": 256,
+    "max_regex_length": 4096,
+    "max_stage_count": 50,
+    "max_attempts": 4,
+    "execution_deadline_ms": 5000
+  },
+  "regression_cases": [
+    {
+      "name": "reviewed_smtp-out_representative",
+      "input": "20250812 130034198+0100 aaa-gmailrgo009 smtp 3609 0 140290550523648 Note;SmtpServerConnect(2001/3) id=6864BD5E047384B0:host=11.22.33.44:connection_count=1:local_port=2525",
+      "service": "smtp-out",
+      "source_type": "file",
+      "expected_payload": {
+        "code": "2001/3",
+        "connection_count": "1",
+        "date": "20250812",
+        "event": "SmtpServerConnect",
+        "event_type": "Note",
+        "host": "11.22.33.44",
+        "hostname": "aaa-gmailrgo009",
+        "id": "6864BD5E047384B0",
+        "local_port": "2525",
+        "major_pid": "3609",
+        "minor_pid": "140290550523648",
+        "pid_status": 0,
+        "service": "smtp",
+        "time": "130034198+0100"
+      },
+      "expected_parser": "nli_reviewed_smtp_out/reviewed_smtp_out",
+      "expected_route": "normal"
+    }
+  ],
+  "metadata": {
+    "activation_review": "approved-and-activated",
+    "contract_key_count": "55",
+    "corpus_archive_sha256": "29ed50f36785fdf0f5693ab2a44d3613348b0898ec078567836286fac1781fa6",
+    "corpus_family": "SMTP-OUT",
+    "corpus_fixture_sha256": "b784f584655f5fe39c362267a05dec9687cd564148ac8afd6cccd0677cb3d5b6",
+    "effective_key_count": "105",
+    "field_alias.Hostname": "input.Hostname",
+    "field_alias.code": "input.code",
+    "field_alias.source": "input.source",
+    "importer_parity": "not-applicable",
+    "key_contract_sha256": "276619aa564a9bb472657fb33ee95f5e25231d7990d56ede65f7d618f282edd1",
+    "profile_asset_schema": "1",
+    "profile_kind": "product-reviewed-family-contract",
+    "profile_provenance": "explicit-product-owned-contract-not-importer-derived",
+    "review_reference": "sample-logs/keys.expected.json schema 2; records.expected.json schema 1",
+    "reviewed_extension_count": "50",
+    "runtime_order": "170",
+    "service_inference": "record-structure-and-reviewed-service-token"
+  }
+}

@@ -1,0 +1,624 @@
+declare "imapserv_filter" {
+
+    argument "logfilename" {}
+    argument "log_receiver" {}
+
+    loki.source.file "imapserv" {
+        targets               = [{__path__ = argument.logfilename.value, "job" = "imapserv"}]
+        forward_to            = [loki.process.imapserv.receiver]
+        tail_from_end         = true
+    }
+
+    loki.process "imapserv" {
+            forward_to = [loki.relabel.imapserv_drop_label.receiver]
+            stage.regex {
+            expression = "^(?P<year>\\d{4})(?P<month>\\d{2})(?P<day>\\d{2}).(?P<hour>\\d{2})(?P<min>\\d{2})(?P<sec>\\d{2})(?P<ms>\\d{3}).(?P<timezone>\\d{2}).{2}.(?P<hostname>[A-Za-z0-9-]+[-A-Za-z0-9]).{1}(?P<service>[A-Za-z]+).{1}(?P<pid>[0-9]+).{1}(?P<minor_pid>[0-9]+).{1}(?P<thread_id>[0-9]+).{1}(?P<log_level>[A-Za-z]+).{1}(?P<event>[A-Za-z0-9]+)\\([^)]*\\)\\s(?<kv_string>.*)$"
+            }
+
+
+         // Get date in format
+        stage.template {
+                source = "formatted_date"
+            template = "{{.year}}-{{.month}}-{{.day}}T{{.hour}}:{{.min}}:{{.sec}}.{{.ms}}+{{.timezone}}:00"
+            }
+            stage.timestamp {
+                source = "formatted_date"
+                format = "2006-01-02T15:04:05.000Z07:00"
+                action_on_failure = "skip"
+            }
+
+        stage.labels {
+            values = {
+                event = null,
+            }
+        }
+
+        stage.match {
+           //selector = "{event!~\"AcctUnknownUser|AcctInactive|AcctBadPswd|AcctImapNotAllowed|ImapConnTimedOut|NioRecvFail|SslHandshakeSucceeded|ImapMoveComplete|ImapDisconnected|ImapLogout|ImapConnMade|ImapProxyLoginFailed|ImapProxyConnMade|NioGetSockNameFail|MsgTrace|MsMessageReadFail|MsMsgIDNotFound|ImapProtocolErr|ImapCommandFailedReason|MsTooBusy|SslHandshakeFailed|NioSendError|UserDataException|ImapDataInconsistency|ImapMessageCountMismatch|SievePolicyLog|SievePolicyExecute|NioTimeOutWrite|NioTimeOutRead|AcctMaintenance|CassdbNoDataFoundError|ImapUIDOutOfOrder|CountersAccessError\"}"
+           // 1st Phase: Ingest only logs available in ELK
+           selector = "{event!~\"AcctUnknownUser|AcctInactive|AcctBadPswd|AcctImapNotAllowed|NioRecvFail|ImapMoveComplete|ImapConnMade|ImapProxyLoginFailed|ImapProxyConnMade|NioSendError|UserDataException|SievePolicyLog|AcctMaintenance|CountersAccessError\"}"
+           action = "drop"
+           drop_counter_reason = "non_essential_log"
+        }
+
+        stage.match {
+            selector = "{event=~\"AcctUnknownUser|AcctInactive|AcctBadPswd|AcctImapNotAllowed|ImapConnTimedOut|NioRecvFail|SslHandshakeSucceeded|ImapMoveComplete|ImapDisconnected|ImapLogout|ImapConnMade|ImapProxyLoginFailed|ImapProxyConnMade|NioGetSockNameFail\"}"
+
+            // Extract cmd
+            stage.regex {
+                expression = "cmd=(?P<cmd_val>[^:]+)"
+                source = "kv_string"
+            }
+            // Correct cmd
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\3a)"
+               replace   = ","
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\")"
+               replace   = ""
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\)"
+               replace   = "\\\\"
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\5c)"
+               replace   = "\\"
+            }
+            // replace cmd
+            stage.replace {
+               source    = "kv_string"
+               expression = "cmd=(?P<cmd_val>[^:]+)"
+               replace   = "{{ .cmd_val }}"
+            }
+            // Parse kv_string
+            stage.replace {
+                source    = "kv_string"
+                expression = "(:)"
+                replace   = "\",\""
+            }
+
+            stage.replace {
+                source    = "kv_string"
+                expression = "(=)"
+                replace   = "\":\""
+            }
+            stage.template {
+                source = "json_kv_string"
+                template = "{\"{{ .kv_string }}\"}"
+            }
+            stage.match {
+                selector = "{event=~\"NioGetSockNameFail\"}"
+                 stage.template {
+                    source    = "kv_string"
+                    template  = "message\": \"{{ .kv_string}}"
+                }
+            }
+
+            stage.template {
+                source = "formatted_event"
+                template = "\"{{ .kv_string }}\""
+            }
+        }
+        stage.match {
+            selector = "{event=~\"NioTimeOutWrite|NioTimeOutRead|AcctMaintenance|CassdbNoDataFoundError|ImapProxyLoginFailed|ImapProxyConnMade|ImapUIDOutOfOrder\"}"
+            stage.regex {
+                source = "kv_string"
+                expression = "^(?P<argument1>[^:]+).(?<argument2>[^:]+).(?<kv_string>[^\n]*)"
+            }
+
+
+            // Extract cmd
+            stage.regex {
+                expression = "cmd=(?P<cmd_val>[^:]+)"
+                source = "kv_string"
+            }
+            // Correct cmd
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\3a)"
+               replace   = ","
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\")"
+               replace   = ""
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\)"
+               replace   = "\\\\"
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\5c)"
+               replace   = "\\"
+            }
+            // replace cmd
+            stage.replace {
+               source    = "kv_string"
+               expression = "cmd=(?P<cmd_val>[^:]+)"
+               replace   = "{{ .cmd_val }}"
+            }
+
+            // Make it json
+            stage.replace {
+                source    = "kv_string"
+                expression = "(:)"
+                replace   = "\",\""
+            }
+
+            stage.replace {
+                source    = "kv_string"
+                expression = "(=)"
+                replace   = "\":\""
+            }
+
+            stage.template {
+                source = "formatted_event"
+                template = "\"argument1\": \"{{ .argument1 }}\", \"argument2\": \"{{ .argument2 }}\", \"{{ .kv_string }}\""
+            }
+        }
+        stage.match {
+            selector = "{event=~\"MsgTrace|MsMessageReadFail|MsMsgIDNotFound|ImapProtocolErr|ImapCommandFailedReason|ImapProxyLoginFailed|ImapProxyConnMade|MsTooBusy|SslHandshakeFailed|NioSendError|CountersAccessError\"}"
+            stage.regex {
+                source = "kv_string"
+                expression = "^(?P<argument>[^:]+).(?P<kv_string>[^\n]+)"
+            }
+
+
+            stage.replace {
+               source    = "argument"
+               expression = "(\")"
+               replace   = ""
+            }
+
+
+            // Extract cmd
+            stage.regex {
+                expression = "cmd=(?P<cmd_val>[^:]+)"
+                source = "kv_string"
+            }
+            // Correct cmd
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\3a)"
+               replace   = ","
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\")"
+               replace   = ""
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\)"
+               replace   = "\\\\"
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\5c)"
+               replace   = "\\"
+            }
+            // replace cmd
+            stage.replace {
+               source    = "kv_string"
+               expression = "cmd=(?P<cmd_val>[^:]+)"
+               replace   = "{{ .cmd_val }}"
+            }
+
+            stage.replace {
+                source    = "kv_string"
+                expression = "(:)"
+                replace   = "\",\""
+            }
+            stage.replace {
+                source    = "kv_string"
+                expression = "(=)"
+                replace   = "\":\""
+            }
+            stage.template {
+                source = "formatted_event"
+                template = "\"argument\": \"{{ .argument }}\", \"{{ .kv_string }}\""
+            }
+        }
+        stage.match {
+            selector = "{event=~\"SievePolicyLog|SievePolicyExecute|ImapProxyLoginFailed|ImapProxyConnMade\"}"
+            stage.regex {
+                source = "kv_string"
+                expression = "^(?P<argument>[^:]+).(?P<kv_string>[^\n]+)"
+            }
+
+            stage.replace {
+               source    = "argument"
+               expression = "(\")"
+               replace   = ""
+            }
+            // Extract cmd
+            stage.regex {
+                expression = "cmd=(?P<cmd_val>[^:]+)"
+                source = "kv_string"
+            }
+            // Correct cmd
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\3a)"
+               replace   = ","
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\")"
+               replace   = ""
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\)"
+               replace   = "\\\\"
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\5c)"
+               replace   = "\\"
+            }
+            // replace cmd
+            stage.replace {
+               source    = "kv_string"
+               expression = "cmd=(?P<cmd_val>[^:]+)"
+               replace   = "{{ .cmd_val }}"
+            }
+            stage.replace {
+                source    = "kv_string"
+                expression = "(:)"
+                replace   = "\",\""
+            }
+            stage.replace {
+                source    = "kv_string"
+                expression = "(=)"
+                replace   = "\":\""
+            }
+            stage.template {
+                source = "formatted_event"
+                template = "\"argument\": \"{{ .argument }}\", \"{{ .kv_string }}\""
+            }
+        }
+        stage.match {
+            selector = "{event=~\"ImapMessageCountMismatch\"}"
+            stage.regex {
+                source = "kv_string"
+                expression = "^(?P<argument>[^:]+)..(?P<kv_string>[^\n]+)"
+            }
+
+            stage.replace {
+               source    = "argument"
+               expression = "(\")"
+               replace   = ""
+            }
+
+            // Extract cmd
+            stage.regex {
+                expression = "cmd=(?P<cmd_val>[^:]+)"
+                source = "kv_string"
+            }
+            // Correct cmd
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\3a)"
+               replace   = ","
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\")"
+               replace   = ""
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\)"
+               replace   = "\\\\"
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\5c)"
+               replace   = "\\"
+            }
+            // replace cmd
+            stage.replace {
+               source    = "kv_string"
+               expression = "cmd=(?P<cmd_val>[^:]+)"
+               replace   = "{{ .cmd_val }}"
+            }
+            stage.replace {
+                source    = "kv_string"
+                expression = "(:)"
+                replace   = "\",\""
+            }
+            stage.replace {
+                source    = "kv_string"
+                expression = "(=)"
+                replace   = "\":\""
+            }
+            stage.template {
+                source = "formatted_event"
+                template = "\"argument\": \"{{ .argument }}\", \"{{ .kv_string }}\""
+            }
+        }
+        stage.match {
+            selector = "{event=~\"ImapDataInconsistency\"}"
+            stage.regex {
+                source = "kv_string"
+                expression = "^(?P<argument>[^:]+).(?P<ms_url>[^:]+).(?P<folderUUID>[^:]+).(?P<msgCount>[^:]+).(?P<kv_string>[^\n]+)"
+            }
+            stage.replace {
+               source    = "ms_url"
+               expression = "(\\\\3a)"
+               replace   = "\\\\3a"
+            }
+            stage.replace {
+               source    = "argument"
+               expression = "(\\\\3a)"
+               replace   = "\\\\3a"
+            }
+            stage.replace {
+               source    = "argument"
+               expression = "(\")"
+               replace   = ""
+            }
+            stage.replace {
+               source    = "argument"
+               expression = "(\\\\5c)"
+               replace   = "\\"
+            }
+
+
+            // Extract cmd
+            stage.regex {
+                expression = "cmd=(?P<cmd_val>[^:]+)"
+                source = "kv_string"
+            }
+            // Correct cmd
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\3a)"
+               replace   = ","
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\")"
+               replace   = ""
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\)"
+               replace   = "\\\\"
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\5c)"
+               replace   = "\\"
+            }
+            // replace cmd
+            stage.replace {
+               source    = "kv_string"
+               expression = "cmd=(?P<cmd_val>[^:]+)"
+               replace   = "{{ .cmd_val }}"
+            }
+            stage.replace {
+                source    = "kv_string"
+                expression = "(:)"
+                replace   = "\",\""
+            }
+            stage.replace {
+                source    = "kv_string"
+                expression = "(=)"
+                replace   = "\":\""
+            }
+            stage.template {
+                source = "formatted_event"
+                template = "\"argument\": \"{{ .argument }}\", \"ms_url\": \"{{ .ms_url }}\", \"folderUUID\": \"{{ .folderUUID }}\", \"msgCount\": \"{{ .msgCount }}\", \"{{ .kv_string }}\""
+            }
+        }
+        stage.match {
+            selector = "{event=~\"UserDataException\"}"
+            stage.regex {
+                source = "kv_string"
+                //expression = "^(?P<errorCode>[^:]+).(?P<ReqParameters>[^:]+).(?<OpType>[^:]+).(?P<ShortMsg>[^:]+)..(?P<kv_string>.*)"
+                expression = "^(?P<errorCode>[^:]+):(?P<ReqParameters>\\{[^}]+\\}):(?P<OpType>[^:]+):(?P<ShortMsg>.*?):(?P<kv_string>user=.*)"
+            }
+
+            // Extract cmd
+            stage.regex {
+                expression = "cmd=(?P<cmd_val>[^:]+)"
+                source = "kv_string"
+            }
+            // Correct cmd
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\3a)"
+               replace   = ","
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\")"
+               replace   = ""
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\)"
+               replace   = "\\\\"
+            }
+            stage.replace {
+               source    = "cmd_val"
+               expression = "(\\\\5c)"
+               replace   = "\\"
+            }
+            // replace cmd
+            stage.replace {
+               source    = "kv_string"
+               expression = "cmd=(?P<cmd_val>[^:]+)"
+               replace   = "{{ .cmd_val }}"
+            }
+            stage.replace {
+                source    = "kv_string"
+                expression = "(:)"
+                replace   = "\",\""
+            }
+            stage.replace {
+                source    = "kv_string"
+                expression = "(=)"
+                replace   = "\":\""
+            }
+            stage.template {
+                source = "formatted_event"
+                template = "\"errorCode\": \"{{ .errorCode }}\", \"ReqParameters\": \"{{ .ReqParameters }}\", \"OpType\": \"{{ .OpType }}\", \"ShortMsg\": \"{{ .ShortMsg }}\", \"{{ .kv_string }}\""
+            }
+        }
+        stage.match {
+            selector = "{event=~\"AcctUnknownUser|AcctInactive|AcctBadPswd|AcctImapNotAllowed|ImapConnTimedOut|NioRecvFail|SslHandshakeSucceeded|ImapMoveComplete|ImapDisconnected|ImapLogout|ImapConnMade|ImapProxyLoginFailed|ImapProxyConnMade|NioGetSockNameFail|MsgTrace|MsMessageReadFail|MsMsgIDNotFound|ImapProtocolErr|ImapCommandFailedReason|MsTooBusy|SslHandshakeFailed|NioSendError|UserDataException|ImapDataInconsistency|ImapMessageCountMismatch|SievePolicyLog|SievePolicyExecute|NioTimeOutWrite|NioTimeOutRead|AcctMaintenance|CassdbNoDataFoundError|ImapUIDOutOfOrder|CountersAccessError\"}"
+
+            stage.regex {
+                source = "formatted_event"
+                expression = "fromhost\":\"(?P<fromhost>[^\"]+)"
+            }
+
+            // Generate network_bucket from fromhost (/24 network)
+            stage.template {
+                source = "network_bucket"
+                template = `
+                    {{- if and .fromhost (regexMatch "^([0-9]{1,3}\\.){3}[0-9]{1,3}$" .fromhost) -}}
+                        {{- $net := regexReplaceAll "^([0-9]+\\.[0-9]+\\.[0-9]+)\\.[0-9]+$" .fromhost "$1" -}}
+                        {{ printf "%.1s" (Sha2Hash $net "") }}
+                    {{- end -}}
+                `
+            }
+
+            stage.labels {
+                values = {
+                    network_bucket = "network_bucket",
+                }
+            }
+
+            stage.labels {
+                values = {
+                  fromhost = null,
+                }
+            }
+            stage.match {
+                selector = "{fromhost=~\".+\"}"
+                stage.geoip {
+                    db = "/etc/geoip-db/GeoLite2-Country.mmdb"
+                    source  = "fromhost"
+                    db_type = "country"
+                }
+                stage.geoip {
+                    db = "/etc/geoip-db/GeoLite2-ASN.mmdb"
+                    source  = "fromhost"
+                    db_type = "asn"
+                }
+                stage.geoip {
+                    db = "/etc/geoip-db/GeoLite2-City.mmdb"
+                    source  = "fromhost"
+                    db_type = "city"
+                }
+                stage.template {
+                    source = "is_private_ip"
+                    template = "{{ if regexMatch `^(10\\.|192\\.168\\.|172\\.(1[6-9]|2[0-9]|3[0-1])\\.)` .fromhost }}true{{ else }}false{{ end }}"
+                }
+                stage.template {
+                    source = "geoip_country_code"
+                    template = "{{ if eq .is_private_ip \"true\" }}GB{{ else }}{{ .geoip_country_code }}{{ end }}"
+                }
+                stage.template {
+                    source = "geoip_city_name"
+                    template = "{{ if eq .is_private_ip \"true\" }}OPWV_WEB{{ else }}{{ .geoip_city_name }}{{ end }}"
+                }
+
+                stage.template {
+                    source = "geo_details"
+                    template = "\"geoip_country_code\": \"{{ .geoip_country_code }}\", \"geoip_city_name\": \"{{ .geoip_city_name }}\", \"geoip_org\": \"{{ .geoip_autonomous_system_organization }}\""
+                }
+
+            }
+
+            stage.regex {
+                source = "formatted_event"
+                expression = "cmd\":\"(?P<cmd>[^\"]+)"
+            }
+            stage.labels {
+                values = {
+                  cmd = null,
+                }
+            }
+            stage.match {
+               selector = "{cmd=~\".+\"}"
+               stage.regex {
+                   source = "cmd"
+                   expression = "^(?P<imapTag>[A-Za-z0-9]+)\\s+(?P<imapCommand>[A-Za-z]+)"
+               }
+            }
+
+            stage.template {
+                source = "event_out"
+                template = "{\"hostname\": \"{{ .hostname }}\", \"service\": \"{{ .service }}\", \"thread_id\": \"{{ .thread_id }}\", \"log_level\": \"{{ .log_level }}\", \"event\": \"{{ .event }}\", \"imaptag\":\"{{.imapTag}}\", \"imapcmd\":\"{{.imapCommand}}\", {{.formatted_event}}{{ if .geo_details }},{{ .geo_details }}{{ end }}}"
+                }
+                stage.replace {
+                source     = "event_out"
+                expression = "(\\\\)"
+                replace    = "\\\\"
+                }
+                stage.replace {
+                   source    = "event_out"
+                   expression = "(\\\\3a)"
+                   replace   = "\\3a"
+                }
+                stage.replace {
+                   source    = "event_out"
+                   expression = "(\\\\5c)"
+                   replace   = "\\"
+                }
+
+                // Generate email_bucket from user ( exclude events to avoid bucket overloading)
+                stage.match {
+                    selector = "{event!~\"AcctUnknownUser|AcctImapNotAllowed\"}"
+                    stage.json {
+                        source = "event_out"
+                        expressions = { user = "user" , }
+                    }
+
+                                        //hash only the user name by removing the .t1 and t2
+                    stage.template {
+                        source = "email_bucket"
+                        template = `
+                            {{- if .user -}}
+                                {{- $username := index (splitList "@" (ToLower (printf "%s" .user))) 0 -}}
+                                {{- $username = regexReplaceAll "(\\.t21|\\.t1)$" $username "" -}}
+                                {{- printf "%.2s" (Sha2Hash $username "") -}}
+                            {{- end -}}
+                        `
+                    }
+
+                    stage.labels {
+                        values = {
+                            email_bucket = "email_bucket",
+                        }
+                    }
+                                }
+                // End of email_bucket code
+
+                stage.output {
+                    source = "event_out"
+                }
+        }
+    }
+    loki.relabel "imapserv_drop_label" {
+       rule {
+           action = "labeldrop"
+           regex  = "filename|fromhost|cmd"
+       }
+       forward_to = argument.log_receiver.value
+    }
+}
+
