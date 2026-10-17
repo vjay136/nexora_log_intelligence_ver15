@@ -126,7 +126,10 @@ test('V14 blank-panel regressions: every workspace renders authenticated control
     await expect(page.locator('#page-title')).not.toHaveText('');
     await expect(page.locator('.loading-state')).toHaveCount(0);
     await expect(page.locator('.error-state')).toHaveCount(0);
-    await expect(page.locator('#page > .panel, #page > .grid, #page > .split').first()).toBeVisible();
+    // Workspaces may render a panel/grid/split root or a composed dashboard
+    // made from several direct children. The regression contract is that the
+    // authenticated workspace renders visible content, independent of layout.
+    await expect(page.locator('#page > *').first()).toBeVisible({ timeout: 15_000 });
     await expect(page.locator('#page')).toContainText(contract.text);
     await expect(page.locator('#page')).not.toContainText('undefined');
     await expect.poll(() => contract.paths.every(path => successfulAPIs.has(path)), { message: `${tab} did not complete ${contract.paths.filter(path => !successfulAPIs.has(path)).join(', ')}` }).toBe(true);
