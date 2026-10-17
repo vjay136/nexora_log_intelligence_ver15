@@ -9,15 +9,16 @@ import (
 	"testing"
 	"time"
 
-	"nexora.local/nli-v13/internal/quarantine"
+	"nexora.local/nli-v14/internal/quarantine"
 )
 
 func TestReplayQueueDeliversResolvedRecordsAndRetainsOnlyUnresolved(t *testing.T) {
 	root := t.TempDir()
 	queuePath := filepath.Join(root, "quarantine.jsonl")
 	normalizedPath := filepath.Join(root, "normalized.jsonl")
+	inputPath := filepath.Join(root, "input.log")
 	raw := "20250811 080053102+0100 aaa-gmailrgi009 smtp 3692 0 140026870728448 Note;SmtpServerConnect(2001/3) id=67F5E2BF38CCA05B:host=11.22.33.44:connection_count=1:local_port=2525"
-	record := quarantine.New("node-1", "smtp-in", "/var/log/mail/in.log", 7, raw, "old-revision", 1, []string{"all_packs_failed"}, time.Now().UTC())
+	record := quarantine.New("node-1", "smtp-in", inputPath, 7, raw, "old-revision", 1, []string{"all_packs_failed"}, time.Now().UTC())
 	if err := quarantine.Append(queuePath, record); err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +28,7 @@ func TestReplayQueueDeliversResolvedRecordsAndRetainsOnlyUnresolved(t *testing.T
 	}
 	config := map[string]any{
 		"version":   2,
-		"inputs":    []any{map[string]any{"path": "/var/log/mail/in.log", "service": "smtp-in"}},
+		"inputs":    []any{map[string]any{"path": inputPath, "service": "smtp-in"}},
 		"state_dir": filepath.Join(root, "state"), "poll_ms": 500,
 		"outputs": []any{
 			map[string]any{"type": "file", "path": normalizedPath, "routes": []string{"normal", "warning"}},

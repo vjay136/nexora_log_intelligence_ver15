@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"nexora.local/nli-v13/internal/auth"
-	"nexora.local/nli-v13/internal/middleware"
-	"nexora.local/nli-v13/telemetry"
+	"nexora.local/nli-v14/internal/auth"
+	"nexora.local/nli-v14/internal/middleware"
+	"nexora.local/nli-v14/telemetry"
 )
 
 func TestStreamHubSnapshotAndSlowSubscriber(t *testing.T) {
@@ -23,8 +23,9 @@ func TestStreamHubSnapshotAndSlowSubscriber(t *testing.T) {
 	if _, _, ok := hub.Subscribe(); ok {
 		t.Fatal("subscriber limit was not enforced")
 	}
+	base := time.Now().UTC()
 	for i := 0; i < 100; i++ {
-		hub.Publish(telemetry.StreamFileTelemetry{NodeID: "node", Source: "/a.log", ReadLines: uint64(i), UpdatedAt: time.Now()})
+		hub.Publish(telemetry.StreamFileTelemetry{NodeID: "node", Source: "/a.log", ReadLines: uint64(i), UpdatedAt: base.Add(time.Duration(i) * time.Nanosecond)})
 	}
 	if got := len(ch); got != 1 {
 		t.Fatalf("slow subscriber queue grew to %d", got)

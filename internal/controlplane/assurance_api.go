@@ -16,9 +16,9 @@ import (
 	"strings"
 	"time"
 
-	"nexora.local/nli-v13/internal/middleware"
-	"nexora.local/nli-v13/internal/registry"
-	metastore "nexora.local/nli-v13/internal/store"
+	"nexora.local/nli-v14/internal/middleware"
+	"nexora.local/nli-v14/internal/registry"
+	metastore "nexora.local/nli-v14/internal/store"
 )
 
 type aiProviderConfig struct {
@@ -603,7 +603,67 @@ func (s *Server) handleAssuranceParser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if len(parts) < 2 {
-		http.NotFound(w, r)
+		permission := middleware.PermissionManageParsers
+		if r.Method == http.MethodGet {
+			permission = middleware.PermissionReadParsers
+		}
+		p := s.authorize(w, r, permission)
+		if p == nil {
+			return
+		}
+		doc, err := s.metadata.Get(r.Context(), "parser-packs", id, 0)
+		if err != nil {
+			jsonError(w, "parser draft not found", 404)
+			return
+		}
+		switch r.Method {
+		case http.MethodGet:
+			jsonOK(w, documentView(doc))
+		case http.MethodPut:
+			if doc.State != "draft" && doc.State != "rejected" {
+				jsonError(w, "only draft or rejected parsers may be edited", 409)
+				return
+			}
+			var input assuranceParserInput
+			if decodeJSON(r, &input, 2<<20) != nil || strings.TrimSpace(input.Name) == "" || len(input.Cases) == 0 || len(input.Cases) > 100 {
+				jsonError(w, "name and 1..100 validation cases are required", 400)
+				return
+			}
+			if input.Version == "" {
+				input.Version = "0.1.0"
+			}
+			if !semverPattern.MatchString(input.Version) || input.Parser == nil || unsafeDeclarative(input.Parser) != nil {
+				jsonError(w, "safe declarative parser and semantic version are required", 400)
+				return
+			}
+			input.Parser["id"] = id
+			if _, ok := input.Parser["version"]; !ok {
+				input.Parser["version"] = 1
+			}
+			validation := validateParserCandidate(input.Parser, input.Cases)
+			payload, _ := json.Marshal(map[string]any{"id": id, "name": input.Name, "version": input.Version, "parser": input.Parser, "cases": input.Cases, "validation": validation, "validation_passed": validation["failed"] == 0 && validation["total"] == len(input.Cases), "review_state": "draft", "activated": false})
+			saved, err := s.metadata.Put(r.Context(), metastore.Document{Collection: "parser-packs", ID: id, State: "draft", Payload: payload, CreatedBy: doc.CreatedBy})
+			if err != nil {
+				jsonError(w, "parser draft update failed", 500)
+				return
+			}
+			s.auditAction(p, "assurance.parser_update", "parser-packs/"+id, "success", nil)
+			jsonOK(w, map[string]any{"id": id, "revision": saved.Revision, "state": "draft", "validation": validation})
+		case http.MethodDelete:
+			if doc.State != "draft" && doc.State != "rejected" {
+				jsonError(w, "only draft or rejected parsers may be deleted", 409)
+				return
+			}
+			if err := s.metadata.Delete(r.Context(), "parser-packs", id, false, p.Username); err != nil {
+				jsonError(w, "parser draft deletion failed", 500)
+				return
+			}
+			s.auditAction(p, "assurance.parser_delete", "parser-packs/"+id, "success", nil)
+			jsonOK(w, map[string]string{"status": "deleted"})
+		default:
+			w.Header().Set("Allow", "GET, PUT, DELETE")
+			jsonError(w, "GET, PUT or DELETE required", 405)
+		}
 		return
 	}
 	action := parts[1]

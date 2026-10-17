@@ -6,7 +6,7 @@ const tabs = [
   'projection','studio','regex','knownkeys','semantic','engine-network','engine-url','engine-email','engine-subject','outputs','metadata','unknowns','drift','performance','rollouts','artifacts','security','system','ai',
 ];
 const liveWorkspaceContracts = {
-  operations: { paths: ['/api/v1/dashboard/snapshot'], text: 'Live parsing at a glance' },
+  operations: { paths: ['/api/v1/dashboard/snapshot'], text: 'Parsing Operations Center' },
   assurance: { paths: ['/api/v1/assurance/cases'], text: 'Production parser assurance' },
   streams: { paths: ['/api/v1/telemetry/stream/snapshot'], text: 'Streams' },
   'field-integrity': { paths: ['/api/v1/verification/sample-corpus'], text: 'Family field-accounting proof' },
@@ -111,7 +111,7 @@ test('premium login loads runtime assets and rejects invalid credentials', async
   await expect(page.getByTestId('nav-operations')).toBeVisible();
 });
 
-test('V13 blank-panel regressions: every workspace renders authenticated controller responses', async ({ page }) => {
+test('V14 blank-panel regressions: every workspace renders authenticated controller responses', async ({ page }) => {
   await login(page);
   const failedAPIs = [];
   const successfulAPIs = new Set();

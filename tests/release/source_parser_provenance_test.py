@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Verify every user-supplied parser reference has immutable V13 provenance."""
+"""Verify every user-supplied parser reference has immutable V14 provenance."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ def main() -> None:
     assert manifest.get("source_count") == len(entries) == 16
     assert "Supabase" in manifest.get("supabase_sync", "")
 
-    catalog = (root / "configs/parser-catalog/nli-v13-parser-catalog.json").read_text(encoding="utf-8")
+    catalog = (root / "configs/parser-catalog/nli-v14-parser-catalog.json").read_text(encoding="utf-8")
     seen: set[str] = set()
     repaired = 0
     for entry in entries:

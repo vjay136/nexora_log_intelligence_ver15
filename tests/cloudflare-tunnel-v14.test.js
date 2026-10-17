@@ -2,10 +2,10 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
-const setup = readFileSync(new URL('../scripts/setup-cloudflare-tunnel-v13.sh', import.meta.url), 'utf8');
-const verify = readFileSync(new URL('../scripts/verify-cloudflare-tunnel-v13.sh', import.meta.url), 'utf8');
-const uninstall = readFileSync(new URL('../scripts/uninstall-cloudflare-tunnel-v13.sh', import.meta.url), 'utf8');
-const quick = readFileSync(new URL('../scripts/cloudflare-quick-diagnosis-v13.sh', import.meta.url), 'utf8');
+const setup = readFileSync(new URL('../scripts/setup-cloudflare-tunnel-v14.sh', import.meta.url), 'utf8');
+const verify = readFileSync(new URL('../scripts/verify-cloudflare-tunnel-v14.sh', import.meta.url), 'utf8');
+const uninstall = readFileSync(new URL('../scripts/uninstall-cloudflare-tunnel-v14.sh', import.meta.url), 'utf8');
+const quick = readFileSync(new URL('../scripts/cloudflare-quick-diagnosis-v14.sh', import.meta.url), 'utf8');
 
 test('named setup uses a protected token file and keeps credentials out of the unit', () => {
   assert.match(setup, /https:\/\/127\.0\.0\.1:12382/);

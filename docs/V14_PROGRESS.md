@@ -1,6 +1,6 @@
-# V13 engineering status
+# V14 engineering status
 
-V13 implements the controller, client, WebView, deployable WebApp, Supabase metadata plane, reviewed parser corpus, and approval-gated fleet configuration lifecycle in this source tree.
+V14 implements the controller, client, WebView, deployable WebApp, Supabase metadata plane, reviewed parser corpus, and approval-gated fleet configuration lifecycle in this source tree.
 
 ## Data path
 
@@ -22,7 +22,7 @@ The release process runs uncached Go tests and vet, Web/API tests, browser tests
 
 - The uncached Go format, unit, vet, full race, and mixed-KV fuzz gate passed. The fuzz run executed 154,670 inputs without a crash.
 - The real-controller browser flow passed all 6 scenarios and visits every one of the 33 authenticated workspaces, including Live Streams and Input Log Paths.
-- The mocked browser regression suite passed all 24/24 scenarios from the final source.
+- The mocked browser regression suite passed all 28/28 scenarios from the final source, including the aggregate live dashboard and Parser Creation Workspace.
 - The supplied corpus accounts for 728/728 inputs: 723 valid records have exact source-field parity, five hash-pinned malformed or truncated records reach expected quarantine, and 278/278 known family keys are covered.
 - The production agent processed and durably checkpointed 5,368,709,120 bytes and 1,310,720 records in 466.717 seconds on the recorded six-logical-CPU Linux/amd64 Docker host. The report is `docs/evidence/THROUGHPUT_5G.json`.
 

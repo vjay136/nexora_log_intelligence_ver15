@@ -1,8 +1,8 @@
-# Nexora Log Inetelligence Ver13 backend contract
+# Nexora Log Intelligence Ver14 backend contract
 
 ## Identity and parser execution
 
-The Go module is `nexora.local/nli-v13`; the runtime reports `13.0.0`, and the controller health header is `X-NLI-Controller: v13`.
+The Go module is `nexora.local/nli-v14`; the runtime reports `14.0.0`, and the controller health header is `X-NLI-Controller: v14`.
 
 The parsing priority is:
 
@@ -14,7 +14,7 @@ The parsing priority is:
 
 Lossless rules use `projection_mode: all` and `count_policy: exact_source_fields`. Intentional field selection uses `allowlist` or `denylist` with `count_policy: projection`. Derived output fields require `count_policy: allow_derived`. This keeps source-field counts auditable.
 
-`configs/parser-catalog/nli-v13-parser-catalog.json` records the tiers, sample-family key inventory, parser asset IDs, extracted source inventory, and the scope of the sample evidence. The supplied corpus contains 728 records: 678 records across eight known families from the pinned archive plus 50 records from the additional standalone sample. Migration tests execute the 678 known-family records against reviewed profiles, and the additional-sample tests account for all 50 remaining records and their provenance. The tests do not establish a universal accuracy guarantee for arbitrary unseen logs.
+`configs/parser-catalog/nli-v14-parser-catalog.json` records the tiers, sample-family key inventory, parser asset IDs, extracted source inventory, and the scope of the sample evidence. The supplied corpus contains 728 records: 678 records across eight known families from the pinned archive plus 50 records from the additional standalone sample. Migration tests execute the 678 known-family records against reviewed profiles, and the additional-sample tests account for all 50 remaining records and their provenance. The tests do not establish a universal accuracy guarantee for arbitrary unseen logs.
 
 ## Parser asset APIs
 

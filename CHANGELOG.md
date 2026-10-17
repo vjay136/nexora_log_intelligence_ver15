@@ -1,22 +1,26 @@
 # Changelog
 
-## [13.0.0-1] - 2026-10-16
+## [14.0.0-1] - 2026-10-17
 
-- Preserved all V12 installation and deployment modes while adding dedicated,
-  noninteractive AWS RHEL/Rocky controller and client wrappers.
-- Added an AWS preflight and least-privilege security-group plan that keeps
-  controller TCP 12382 private to the client security group.
-- Added a combined AWS-controller plus named-Cloudflare-Tunnel workflow,
-  protected tunnel-token service, verifier, uninstall helper, and temporary
-  Quick Tunnel diagnosis helper.
-- Added production guides and deployment contracts for Vercel and Cloudflare
-  Pages, both using a stable public Cloudflare controller hostname through the
-  server-only `NLI_CONTROLLER_ORIGIN` variable.
-- Hardened hosted proxies against private, internal, localhost, IP-literal,
-  credential-bearing, and path-bearing controller origins while preserving
-  authentication, bounded uploads, and SSE response streaming.
-- Added offline contract tests for AWS, Cloudflare Tunnel, Vercel preflight,
-  and combined deployment orchestration.
+- Added a noninteractive `--automatic` controller path with stable root-owned
+  credentials, IMDSv2-aware AWS identity discovery, complete certificate SANs,
+  listener/TLS/firewall diagnostics, and safe credential recovery on upgrade.
+- Added client `--all-log-files` provisioning for every reviewed parser family,
+  including family-specific inputs and hourly normalized/quarantine outputs.
+- Reorganized the WebView by operator task and added an original eagle-shield
+  identity with a reduced-motion-safe animated sign-in experience.
+- Rebuilt the operational dashboard around one bounded aggregate request with
+  live ingest, parse, quarantine, error, latency, route, pipeline-stage,
+  backpressure, client-resource, and parser-family measurements.
+- Added a complete Parser Creation Workspace for trimmed single/multiline
+  samples, editable deterministic artifacts, validation, drafts, independent
+  approval, publication, rollout, and audit history.
+- Added encrypted, write-only OpenAI, Anthropic, and compatible-provider
+  configuration. AI proposals run only after an explicit operator action and
+  remain drafts until deterministic validation and independent approval.
+- Preserved AWS/private-network, corporate certificate, Nginx/ACME, existing
+  proxy, Cloudflare Tunnel, Vercel, and Cloudflare Pages deployment paths with
+  same-origin authentication and streaming.
 
 ## [12.0.0-1] - 2026-10-13
 

@@ -1,11 +1,11 @@
-%{!?nli_version:%global nli_version 13.0.0}
+%{!?nli_version:%global nli_version 14.0.0}
 %{!?nli_release:%global nli_release 1}
 Name:           nli-client
 Version:        %{nli_version}
 Release:        %{nli_release}%{?dist}
-Summary:        Nexora Log Inetelligence Ver13 parsing client
+Summary:        Nexora Log Intelligence Ver14 parsing client
 License:        LicenseRef-Proprietary
-URL:            https://github.com/vjay136/nexora_log_intelligence_ver13.git
+URL:            https://github.com/vjay136/nexora_log_intelligence_ver14.git
 Source0:        %{name}-%{version}.tar.gz
 ExclusiveArch:  x86_64
 Provides:       nli-agent = %{version}-%{release}
@@ -21,8 +21,8 @@ AutoReqProv:    no
 %global __os_install_post %{nil}
 
 %description
-NLI v13 client containing the source-derived static parser agent, CLI, benchmark
-utility, and restricted fleet-control sidecar. The nli_clinet_ver13.rpm spelling
+NLI v14 client containing the source-derived static parser agent, CLI, benchmark
+utility, and restricted fleet-control sidecar. The nli_clinet_ver14.rpm spelling
 is a byte-identical distribution filename alias, not a second RPM package.
 
 %prep
@@ -108,7 +108,7 @@ systemctl daemon-reload >/dev/null 2>&1 || :
 %doc %{_docdir}/%{name}/PARSER_CATALOG.md
 
 %changelog
-* Fri Oct 16 2026 Nexora Engineering <engineering@nexora.local> - 13.0.0-1
+* Fri Oct 16 2026 Nexora Engineering <engineering@nexora.local> - 14.0.0-1
 - Add AWS RHEL/Rocky wrappers, private VPC defaults, Cloudflare Tunnel, and hosted-WebApp deployment contracts
 
 * Tue Oct 13 2026 Nexora Engineering <engineering@nexora.local> - 12.0.0-1
@@ -124,7 +124,7 @@ systemctl daemon-reload >/dev/null 2>&1 || :
 - Validate distro-suffixed V12 RPM release metadata in guided installers
 
 * Wed Oct 07 2026 Nexora Engineering <engineering@nexora.local> - 12.0.0-1
-- Build Nexora Log Inetelligence Ver12 from source with Supabase and Vercel delivery
+- Build Nexora Log Intelligence Ver12 from source with Supabase and Vercel delivery
 
 * Tue Oct 06 2026 Nexora Engineering <engineering@nexora.local> - 5.0.0-4
 - Rebuild client with the Supabase-backed controller release and exact private-IP acceptance evidence

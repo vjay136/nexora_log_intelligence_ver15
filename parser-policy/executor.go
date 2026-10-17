@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"nexora.local/nli-v13/projection"
-	"nexora.local/nli-v13/telemetry"
+	"nexora.local/nli-v14/projection"
+	"nexora.local/nli-v14/telemetry"
 )
 
 type ParserPackExecutor struct {
@@ -552,14 +552,13 @@ func appendUnique(values []string, value string) []string {
 
 func elapsedMillis(started time.Time) int64 {
 	elapsed := time.Since(started)
-	if elapsed <= 0 {
-		return 0
-	}
-	milliseconds := elapsed.Milliseconds()
-	if milliseconds == 0 {
+	// Successful parser work must remain observable even on hosts whose clock
+	// resolution is coarser than the operation. A zero duration makes completed
+	// attempts indistinguishable from missing telemetry in the controller UI.
+	if elapsed <= 0 || elapsed.Milliseconds() == 0 {
 		return 1
 	}
-	return milliseconds
+	return elapsed.Milliseconds()
 }
 
 func (e *ParserPackExecutor) limitsFor(stage Stage) ResourceLimits {

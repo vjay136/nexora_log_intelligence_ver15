@@ -25,12 +25,12 @@ import (
 	"strings"
 	"time"
 
-	"nexora.local/nli-v13/internal/auditlog"
-	"nexora.local/nli-v13/internal/auth"
-	"nexora.local/nli-v13/internal/fleet"
-	"nexora.local/nli-v13/internal/middleware"
-	"nexora.local/nli-v13/internal/protocol"
-	metastore "nexora.local/nli-v13/internal/store"
+	"nexora.local/nli-v14/internal/auditlog"
+	"nexora.local/nli-v14/internal/auth"
+	"nexora.local/nli-v14/internal/fleet"
+	"nexora.local/nli-v14/internal/middleware"
+	"nexora.local/nli-v14/internal/protocol"
+	metastore "nexora.local/nli-v14/internal/store"
 )
 
 var semverPattern = regexp.MustCompile(`^[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?$`)
@@ -1093,7 +1093,7 @@ func (s *Server) handleUpgrade(w http.ResponseWriter, r *http.Request) {
 			request.Name = "Upgrade " + fmt.Sprint(artifact["name"])
 		}
 	}
-	proposal := map[string]any{"name": request.Name, "type": rolloutType, "target_nodes": request.TargetNodes, "artifact_id": request.ArtifactID, "payload": map[string]any{"version": "13.0.0", "artifact_type": artifactType, "download_url": s.signedArtifactURL(r, request.ArtifactID), "checksum": artifact["sha256"], "size": artifact["size"], "media_type": artifact["media_type"]}, "approval_required": true}
+	proposal := map[string]any{"name": request.Name, "type": rolloutType, "target_nodes": request.TargetNodes, "artifact_id": request.ArtifactID, "payload": map[string]any{"version": "14.0.0", "artifact_type": artifactType, "download_url": s.signedArtifactURL(r, request.ArtifactID), "checksum": artifact["sha256"], "size": artifact["size"], "media_type": artifact["media_type"]}, "approval_required": true}
 	s.createRolloutProposal(w, r, principal, proposal)
 }
 
@@ -1612,7 +1612,7 @@ func (s *Server) handleSystem(w http.ResponseWriter, r *http.Request) {
 	var memory runtime.MemStats
 	runtime.ReadMemStats(&memory)
 	hostname, _ := os.Hostname()
-	jsonOK(w, map[string]any{"version": "13.0.0", "health": "ok", "infrastructure": map[string]any{"hostname": hostname, "os": runtime.GOOS, "arch": runtime.GOARCH, "cpu_count": runtime.NumCPU(), "goroutines": runtime.NumGoroutine(), "memory_bytes": memory.Alloc, "edge": s.edgeInfrastructure()}, "storage": map[string]any{"mode": s.metadata.Mode(), "status": storageStatus, "error": storageError, "diagnostic": storageDiagnostic(storageError), "warning": s.storageWarning, "credentials_exposed": false}, "artifact_storage": map[string]any{"mode": artifactStorageMode, "ready": artifactStorageReady, "buckets": []string{"nli-assurance-fixtures", "nli-rollout-artifacts", "nli-geoip-databases"}, "private": true}, "retention": map[string]any{"normal_raw": false, "normal_json": false, "assurance_enabled": s.assurance.enabled, "assurance_max": s.assurance.max, "assurance_ttl_hours": int(s.assurance.ttl.Hours()), "quarantine_metadata_mode": "local", "quarantine_metadata_status": quarantineStoreStatus, "quarantine_raw_enabled": s.quarantine != nil && s.quarantine.enabled, "quarantine_raw_max_records": s.cfg.QuarantineRawRetentionMaxRecords, "quarantine_raw_ttl_hours": s.cfg.QuarantineRawRetentionHours, "encrypted": s.assurance.enabled || (s.quarantine != nil && s.quarantine.enabled)}, "security": map[string]any{"roles": auth.Roles(), "audit_chain": auditStatus, "artifact_signing_keys": len(s.artifactKeys), "csrf": true, "strict_content_types": true}, "fleet": s.fleet.Stats()})
+	jsonOK(w, map[string]any{"version": "14.0.0", "health": "ok", "infrastructure": map[string]any{"hostname": hostname, "os": runtime.GOOS, "arch": runtime.GOARCH, "cpu_count": runtime.NumCPU(), "goroutines": runtime.NumGoroutine(), "memory_bytes": memory.Alloc, "edge": s.edgeInfrastructure()}, "storage": map[string]any{"mode": s.metadata.Mode(), "status": storageStatus, "error": storageError, "diagnostic": storageDiagnostic(storageError), "warning": s.storageWarning, "credentials_exposed": false}, "artifact_storage": map[string]any{"mode": artifactStorageMode, "ready": artifactStorageReady, "buckets": []string{"nli-assurance-fixtures", "nli-rollout-artifacts", "nli-geoip-databases"}, "private": true}, "retention": map[string]any{"normal_raw": false, "normal_json": false, "assurance_enabled": s.assurance.enabled, "assurance_max": s.assurance.max, "assurance_ttl_hours": int(s.assurance.ttl.Hours()), "quarantine_metadata_mode": "local", "quarantine_metadata_status": quarantineStoreStatus, "quarantine_raw_enabled": s.quarantine != nil && s.quarantine.enabled, "quarantine_raw_max_records": s.cfg.QuarantineRawRetentionMaxRecords, "quarantine_raw_ttl_hours": s.cfg.QuarantineRawRetentionHours, "encrypted": s.assurance.enabled || (s.quarantine != nil && s.quarantine.enabled)}, "security": map[string]any{"roles": auth.Roles(), "audit_chain": auditStatus, "artifact_signing_keys": len(s.artifactKeys), "csrf": true, "strict_content_types": true}, "fleet": s.fleet.Stats()})
 }
 
 func (s *Server) edgeInfrastructure() map[string]any {

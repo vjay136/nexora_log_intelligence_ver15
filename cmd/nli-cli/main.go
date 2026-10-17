@@ -14,15 +14,15 @@ import (
 	"strings"
 	"time"
 
-	"nexora.local/nli-v13/internal/adapter"
-	"nexora.local/nli-v13/internal/agent"
-	"nexora.local/nli-v13/internal/engine"
-	"nexora.local/nli-v13/internal/geoipdb"
-	"nexora.local/nli-v13/internal/multiline"
-	"nexora.local/nli-v13/internal/quarantine"
-	"nexora.local/nli-v13/internal/routing"
-	metastore "nexora.local/nli-v13/internal/store"
-	"nexora.local/nli-v13/telemetry"
+	"nexora.local/nli-v14/internal/adapter"
+	"nexora.local/nli-v14/internal/agent"
+	"nexora.local/nli-v14/internal/engine"
+	"nexora.local/nli-v14/internal/geoipdb"
+	"nexora.local/nli-v14/internal/multiline"
+	"nexora.local/nli-v14/internal/quarantine"
+	"nexora.local/nli-v14/internal/routing"
+	metastore "nexora.local/nli-v14/internal/store"
+	"nexora.local/nli-v14/telemetry"
 )
 
 func main() {
@@ -609,6 +609,13 @@ func replayQueue(path, configPath, parserPackDir string, selectedIDs []string, o
 		}
 	}
 	summary.Replayed, summary.Resolved, summary.Waiting = replayed, resolved, len(summary.WaitingIDs)
+	// Close every configured file destination before atomically replacing the
+	// active quarantine queue. Linux permits renaming an open file, while
+	// Windows correctly rejects it; closing here keeps replay portable and also
+	// guarantees all destination buffers are durable before queue compaction.
+	if err := router.Close(); err != nil {
+		return fmt.Errorf("close replay outputs: %w", err)
+	}
 	if err := appendQuarantineHistory(path+".history.jsonl", history); err != nil {
 		return err
 	}

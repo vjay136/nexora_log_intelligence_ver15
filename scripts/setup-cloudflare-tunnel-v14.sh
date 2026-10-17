@@ -4,12 +4,12 @@ set -euo pipefail
 # Configures a remotely-managed named tunnel. The dashboard owns the public
 # hostname/origin route; this host stores only its connector token in a root
 # protected file and passes it to cloudflared via --token-file.
-PREFIX=setup-cloudflare-tunnel-v13
+PREFIX=setup-cloudflare-tunnel-v14
 fail() { printf '%s: %s\n' "$PREFIX" "$*" >&2; exit 1; }
 info() { printf '%s: %s\n' "$PREFIX" "$*"; }
 usage() {
   cat <<'EOF'
-Usage: sudo bash setup-cloudflare-tunnel-v13.sh --hostname FQDN --token-file PATH
+Usage: sudo bash setup-cloudflare-tunnel-v14.sh --hostname FQDN --token-file PATH
 
 Install Cloudflare's official cloudflared RPM, protect the remotely-managed
 tunnel connector token, and enable cloudflared.service. Configure the published
@@ -90,4 +90,4 @@ else
   systemctl start cloudflared.service
 fi
 info "named tunnel connector configured for $hostname; token was not printed or placed in the service unit"
-info 'run sudo bash scripts/verify-cloudflare-tunnel-v13.sh'
+info 'run sudo bash scripts/verify-cloudflare-tunnel-v14.sh'

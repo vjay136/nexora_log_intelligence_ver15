@@ -1,4 +1,4 @@
-# Nexora Log Inetelligence Ver13: Input and Output Parser Engine
+# Nexora Log Intelligence Ver14: Input and Output Parser Engine
 
 ## Input Parser Engine
 
@@ -30,7 +30,7 @@ Set secret values separately on the client. Example names used by a profile are 
 
 `field_columns` maps an input JSON field name to a ClickHouse column name, for example `{"fromhost":"client_ip"}`. ClickHouse creates mapped and other safe customer fields as `Nullable(String)` columns, while retaining the complete typed customer object in `event_json`. Scalars use their readable text value and nested values use canonical JSON text in their individual columns. This permits field-name queries without discarding the source JSON or guessing unsafe SQL types. Database, table, and mapped column identifiers are restricted to safe ASCII identifiers; no customer field is interpolated into a SQL expression without validation.
 
-Keep field cardinality bounded. V13 limits each row to 256 top-level columns by default. Use explicit mappings for stable fields and keep `event_json` as the typed source of truth for fields that vary across log families.
+Keep field cardinality bounded. V14 limits each row to 256 top-level columns by default. Use explicit mappings for stable fields and keep `event_json` as the typed source of truth for fields that vary across log families.
 
 ## Known limits
 

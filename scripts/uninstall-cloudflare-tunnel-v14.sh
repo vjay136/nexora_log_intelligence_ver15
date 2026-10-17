@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 set -euo pipefail
-[[ $EUID -eq 0 ]] || { echo 'uninstall-cloudflare-tunnel-v13: run with sudo/root' >&2; exit 1; }
+[[ $EUID -eq 0 ]] || { echo 'uninstall-cloudflare-tunnel-v14: run with sudo/root' >&2; exit 1; }
 systemctl disable --now cloudflared.service 2>/dev/null || true
 rm -f /etc/systemd/system/cloudflared.service
 systemctl daemon-reload
 systemctl reset-failed cloudflared.service 2>/dev/null || true
 rm -rf /etc/cloudflared /var/lib/cloudflared
-echo 'uninstall-cloudflare-tunnel-v13: local cloudflared service/configuration removed; cloudflared RPM and Cloudflare dashboard tunnel were left in place'
+echo 'uninstall-cloudflare-tunnel-v14: local cloudflared service/configuration removed; cloudflared RPM and Cloudflare dashboard tunnel were left in place'

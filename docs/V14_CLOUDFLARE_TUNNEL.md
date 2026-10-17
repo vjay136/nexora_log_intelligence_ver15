@@ -1,6 +1,6 @@
-# V13 Cloudflare Tunnel on an AWS Red Hat controller
+# V14 Cloudflare Tunnel on an AWS Red Hat controller
 
-This is an additive V13 deployment path. It does not change the existing V13 controller installer or deployment modes. Use a **named tunnel** for a stable hostname consumed by Vercel or production users. Use a **Quick Tunnel** only for temporary diagnosis; its random public URL changes and anyone with it may reach the controller.
+This is an additive V14 deployment path. It does not change the existing V14 controller installer or deployment modes. Use a **named tunnel** for a stable hostname consumed by Vercel or production users. Use a **Quick Tunnel** only for temporary diagnosis; its random public URL changes and anyone with it may reach the controller.
 
 The controller listens locally at `https://127.0.0.1:12382`. `cloudflared` makes outbound connections to Cloudflare and forwards the configured hostname to that loopback origin. A named tunnel needs no AWS inbound rule for TCP 12382, and that port must not be opened to the public internet.
 
@@ -35,10 +35,10 @@ The route connects the public hostname through the connector to the host's loopb
 
 ### 3. Install and start the connector on the controller
 
-Copy `scripts/setup-cloudflare-tunnel-v13.sh` and `scripts/verify-cloudflare-tunnel-v13.sh` to the AWS controller, then run:
+Copy `scripts/setup-cloudflare-tunnel-v14.sh` and `scripts/verify-cloudflare-tunnel-v14.sh` to the AWS controller, then run:
 
 ```sh
-sudo bash setup-cloudflare-tunnel-v13.sh \
+sudo bash setup-cloudflare-tunnel-v14.sh \
   --hostname 'nli.example.com' \
   --token-file '/root/cloudflare-tunnel-token.txt'
 ```
@@ -48,7 +48,7 @@ The setup is safe to rerun with the same values. It installs the official RPM pa
 Validate:
 
 ```sh
-sudo bash verify-cloudflare-tunnel-v13.sh
+sudo bash verify-cloudflare-tunnel-v14.sh
 sudo systemctl --no-pager --full status cloudflared.service
 ```
 
@@ -57,7 +57,7 @@ The verifier checks controller `/api/v1/health` over loopback HTTPS, public host
 ### 4. Remove the local connector
 
 ```sh
-sudo bash uninstall-cloudflare-tunnel-v13.sh
+sudo bash uninstall-cloudflare-tunnel-v14.sh
 ```
 
 This disables/removes the local service, config, and token. It deliberately leaves the Cloudflare RPM repository/package and dashboard tunnel/hostname in place; remove those separately in Cloudflare when retiring the deployment.
@@ -67,7 +67,7 @@ This disables/removes the local service, config, and token. It deliberately leav
 For a one-time check, run the separate foreground helper:
 
 ```sh
-sudo bash cloudflare-quick-diagnosis-v13.sh
+sudo bash cloudflare-quick-diagnosis-v14.sh
 ```
 
 It installs the official RPM if needed, validates local controller health, and starts `cloudflared tunnel --url https://127.0.0.1:12382 --no-tls-verify`. Copy the ephemeral `https://<random>.trycloudflare.com` URL from the terminal only for the immediate diagnosis and stop it with Ctrl+C. The process uses an isolated temporary home, so a named-tunnel configuration cannot collide with Quick Tunnel behavior. Quick Tunnels are public, temporary, and have no uptime guarantee; never use one as a production/Vercel origin.
@@ -82,4 +82,4 @@ It installs the official RPM if needed, validates local controller health, and s
 
 ## Test scripts without Cloudflare access
 
-Run `node --test tests/cloudflare-tunnel-v13.test.js` from the repository root. These tests check script invariants and do not contact Cloudflare or require a live tunnel.
+Run `node --test tests/cloudflare-tunnel-v14.test.js` from the repository root. These tests check script invariants and do not contact Cloudflare or require a live tunnel.

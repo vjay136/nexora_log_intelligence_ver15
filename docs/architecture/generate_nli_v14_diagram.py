@@ -15,8 +15,8 @@ WIDTH = 7680
 HEIGHT = 4320
 
 ROOT = Path(__file__).resolve().parent
-SVG_OUT = ROOT / "NLI_V13_COMPLETE_FLOW_AND_ARCHITECTURE.svg"
-PNG_OUT = ROOT / "NLI_V13_COMPLETE_FLOW_AND_ARCHITECTURE_8K.png"
+SVG_OUT = ROOT / "NLI_V14_COMPLETE_FLOW_AND_ARCHITECTURE.svg"
+PNG_OUT = ROOT / "NLI_V14_COMPLETE_FLOW_AND_ARCHITECTURE_8K.png"
 
 
 FONT_REGULAR = r"C:\Windows\Fonts\segoeui.ttf"
@@ -227,7 +227,7 @@ d.add(Polygon([110, by(116), 190, by(76), 270, by(116), 252, by(216),
 d.add(Polygon([142, by(132), 190, by(108), 238, by(132), 226, by(198),
                190, by(228), 154, by(198)], fillColor=C["bg"], strokeColor=None))
 add_text(190, 151, "NLI", size=41, color=C["cyan"], font="NLI-Bold", anchor="middle")
-add_text(315, 74, "Nexora Log Inetelligence Ver13", size=132, color=C["text"], font="NLI-Bold")
+add_text(315, 74, "Nexora Log Intelligence Ver14", size=132, color=C["text"], font="NLI-Bold")
 add_text(320, 222, "COMPLETE FLOW + DEPLOYMENT ARCHITECTURE", size=44, color=C["cyan"], font="NLI-Semibold")
 add_text(320, 300, "Infinite Logs  →  One Engine (NLI)  →  Intelligent Parsing  →  Multiple Endpoints  →  Fully Secured",
          size=45, color=C["muted"], font="NLI-Regular")
@@ -439,9 +439,9 @@ for i, (num, title, body, col) in enumerate(lifecycle):
     if i < len(lifecycle) - 1:
         arrow([(lx + 835, ly + 45), (lx + 895, ly + 45)], col, width=7)
 
-add_text(170, 4132, "NLI V13 principle: deterministic first, explainable always, AI-assisted only when needed, and human-approved before production.",
+add_text(170, 4132, "NLI V14 principle: deterministic first, explainable always, AI-assisted only when needed, and human-approved before production.",
          size=31, color=C["cyan"], font="NLI-Semibold")
-add_text(7510, 4132, "Architecture reference • Release v13.0.0-1 • revision recorded in release manifest",
+add_text(7510, 4132, "Architecture reference • Release v14.0.0-1 • revision recorded in release manifest",
          size=28, color=C["muted"], font="NLI-Regular", anchor="end")
 
 

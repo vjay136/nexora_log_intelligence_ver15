@@ -9,7 +9,7 @@ import tempfile
 
 root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else pathlib.Path(__file__).parents[2])
 setup = (root / "scripts/setup-controller-rocky.sh").read_text(encoding="utf-8")
-uninstall = (root / "scripts/uninstall-controller-ver13.sh").read_text(encoding="utf-8")
+uninstall = (root / "scripts/uninstall-controller-ver14.sh").read_text(encoding="utf-8")
 
 
 def function(source, name):

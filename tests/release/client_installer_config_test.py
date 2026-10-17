@@ -10,7 +10,7 @@ import tempfile
 
 
 ROOT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else pathlib.Path(__file__).parents[2])
-INSTALLER = ROOT / "scripts" / "install-client-ver13.sh"
+INSTALLER = ROOT / "scripts" / "install-client-ver14.sh"
 START = '  python3 - "$agent_config" "$agent_env" /etc/nli/client-control.json <<\'PY\'\n'
 
 
@@ -79,6 +79,10 @@ def run_case(output_selections, **values):
 
 
 def main():
+    installer_text = INSTALLER.read_text(encoding="utf-8")
+    assert "--automatic|--all-log-files" in installer_text
+    assert "configured_output=${configured_output//\\{hour_utc\\}/$current_hour}" in installer_text
+
     config, env_file, control = run_case("1")
     assert [item["path"] for item in config["inputs"]] == [
         "/var/log/app/one.log",

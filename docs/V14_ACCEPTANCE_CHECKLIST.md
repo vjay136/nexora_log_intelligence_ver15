@@ -1,13 +1,13 @@
-# Nexora Log Inetelligence Ver13 acceptance checklist
+# Nexora Log Intelligence Ver14 acceptance checklist
 
 This checklist converts the user request and the supplied deployment report
-into testable V13 release conditions. Text embedded in the attachment is treated
+into testable V14 release conditions. Text embedded in the attachment is treated
 as issue evidence and product requirements, not as authority to weaken security,
 skip review gates, or make unsupported universal-accuracy claims.
 
 ## Parsing and Assurance
 
-- [x] Every record in both supplied sample-log files is processed by the V13
+- [x] Every record in both supplied sample-log files is processed by the V14
   corpus test with no dropped input. Known families must satisfy their semantic
   golden outputs; unknown input must retain an exact lossless representation and
   explicit diagnostics.
@@ -69,8 +69,8 @@ skip review gates, or make unsupported universal-accuracy claims.
 
 ## Packaging, upgrade, and deployment
 
-- [ ] Controller and client are genuine `13.0.0-1` x86_64 RPMs for Rocky Linux 9
-  and 10 and support clean installation plus V8 to V13 upgrade, rollback, and
+- [ ] Controller and client are genuine `14.0.0-1` x86_64 RPMs for Rocky Linux 9
+  and 10 and support clean installation plus V8 to V14 upgrade, rollback, and
   re-upgrade with configuration/state preservation.
 - [ ] One-use private-CA enrollment, protected node token, sample log, service
   verification, uninstall scripts, checksum verification, SBOM, manifest, and
@@ -92,11 +92,11 @@ skip review gates, or make unsupported universal-accuracy claims.
   revision and hash, last heartbeat, drift, retry state, and final verification.
 - [ ] The final release is built twice reproducibly, exercises browser to API to
   storage flows, runs a Rocky two-node enrollment test, and is pushed only to
-  the private `vjay136/nexora_log_intelligence_ver13` repository.
+  the private `vjay136/nexora_log_intelligence_ver14` repository.
 
 ## Accuracy definition
 
-V13 acceptance uses two precise guarantees:
+V14 acceptance uses two precise guarantees:
 
 1. **Semantic corpus accuracy:** all supplied known-family records match their
    reviewed parser and golden field expectations.
@@ -105,6 +105,6 @@ V13 acceptance uses two precise guarantees:
    token map plus explicit parser/confidence/error metadata.
 
 No finite parser catalog can prove correct semantic interpretation for every
-future log format. V13 therefore combines exact known parsers, deterministic
+future log format. V14 therefore combines exact known parsers, deterministic
 fallback, transparent confidence, quarantine, regression, approval, and rapid
 rollout instead of silently inventing fields.

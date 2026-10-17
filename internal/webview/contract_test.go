@@ -25,7 +25,7 @@ func readAsset(t *testing.T, name string) string {
 func TestRequiredTabsAndAPIBackings(t *testing.T) {
 	app := readAsset(t, "app.js")
 	for _, marker := range []string{
-		"Operations", "Assurance Lab", "Fleet & Sync", "Parser Catalog & Priority", "Migration Center",
+		"Live Dashboard", "Assurance Lab", "Fleet Operations", "Parser Catalog & Priority", "Migration Center",
 		"KV Delimiter Config", "Static Positional Patterns", "Field Capture & Projection", "Regex, Templates & Studio",
 		"Live Metadata", "Rollouts", "Signed Artifacts & Upgrades", "Users, RBAC & Audit", "System Health & Storage",
 		"/overview", "/assurance/run", "/assurance/corpus", "/assurance/cases", "/fleet/sync", "/parser-packs",
@@ -91,7 +91,7 @@ func TestLoginFailsClosedUntilControllerIdentityIsVerified(t *testing.T) {
 		"method: 'OPTIONS'",
 		"health?.service !== 'nli-controller-agent'",
 		"health?.api_version !== 'v1'",
-		"loginResponse.headers.get('x-nli-controller') !== 'v13'",
+		"loginResponse.headers.get('x-nli-controller') !== 'v14'",
 		"if(!state.controllerReady){showPreviewOnly(CONTROLLER_REQUIRED);return;}",
 	} {
 		if !strings.Contains(app, marker) {

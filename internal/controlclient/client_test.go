@@ -16,8 +16,8 @@ import (
 	"testing"
 	"time"
 
-	"nexora.local/nli-v13/internal/protocol"
-	"nexora.local/nli-v13/internal/rollout"
+	"nexora.local/nli-v14/internal/protocol"
+	"nexora.local/nli-v14/internal/rollout"
 )
 
 type fakeExecutor struct {

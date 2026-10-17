@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"nexora.local/nli-v13/internal/protocol"
+	"nexora.local/nli-v14/internal/protocol"
 )
 
 const (

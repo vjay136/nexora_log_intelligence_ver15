@@ -4,7 +4,7 @@ import (
 	"strings"
 	"testing"
 
-	"nexora.local/nli-v13/internal/masker"
+	"nexora.local/nli-v14/internal/masker"
 )
 
 func TestMaskIPv4(t *testing.T) {

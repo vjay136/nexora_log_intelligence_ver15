@@ -17,4 +17,4 @@
 ## Remaining integration
 
 - The controller HTTP/UI must invoke candidate fetch and publication through authenticated administrator actions, record the approving user in audit history, and independently approve rollout before any client receives the files. This workstream intentionally does not add client auto-activation or download GeoIP data during log parsing.
-- Linux RPM packaging and Rocky Linux symlink activation/rollback lifecycle should be run in the parent V13 release verification.
+- Linux RPM packaging and Rocky Linux symlink activation/rollback lifecycle should be run in the parent V14 release verification.

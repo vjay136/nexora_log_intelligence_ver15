@@ -22,7 +22,7 @@ files = [
 # Include the deployment build helper when present, but never generated output,
 # local environment files, dependency folders, or controller credentials.
 files += [p.relative_to(root).as_posix() for p in sorted((root / "scripts").glob("*web*.mjs"))]
-for optional in ("docs/WEBVIEW_SUPABASE_DEPLOYMENT.md", "docs/V13_DEPLOYMENT.md",
+for optional in ("docs/WEBVIEW_SUPABASE_DEPLOYMENT.md", "docs/V14_DEPLOYMENT.md",
                  "docs/VERCEL_DEPLOYMENT.md", "docs/CLOUDFLARE_PAGES_DEPLOYMENT.md",
                  "scripts/build-vercel.mjs"):
     if (root / optional).is_file():

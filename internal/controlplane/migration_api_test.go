@@ -12,7 +12,7 @@ import (
 	"testing"
 	"time"
 
-	parserpolicy "nexora.local/nli-v13/parser-policy"
+	parserpolicy "nexora.local/nli-v14/parser-policy"
 )
 
 const controlplaneTestAlloy = `

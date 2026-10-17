@@ -7,7 +7,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"nexora.local/nli-v13/telemetry"
+	"nexora.local/nli-v14/telemetry"
 )
 
 type journalLimiter struct {

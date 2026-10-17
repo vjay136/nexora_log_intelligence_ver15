@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"nexora.local/nli-v13/internal/progressive"
-	"nexora.local/nli-v13/internal/protocol"
-	syncmanager "nexora.local/nli-v13/internal/sync"
+	"nexora.local/nli-v14/internal/progressive"
+	"nexora.local/nli-v14/internal/protocol"
+	syncmanager "nexora.local/nli-v14/internal/sync"
 )
 
 func signedManifest(t *testing.T) (protocol.ImmutableManifest, map[string]ed25519.PublicKey, time.Time) {

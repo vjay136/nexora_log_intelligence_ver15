@@ -3,7 +3,7 @@ package schema_test
 import (
 	"testing"
 
-	"nexora.local/nli-v13/internal/schema"
+	"nexora.local/nli-v14/internal/schema"
 )
 
 func TestValidate_RequiredFieldMissing(t *testing.T) {

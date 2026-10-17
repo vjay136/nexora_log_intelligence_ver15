@@ -19,7 +19,7 @@ docker run --rm --mount "type=bind,source=$repoRoot,target=/src" -w /src $GoImag
     -line-bytes 4096 `
     -sources $sources `
     -source-workers $workers `
-    -work-dir "/tmp/nli-v13-throughput" `
+    -work-dir "/tmp/nli-v14-throughput" `
     -report "/src/$reportName"
 
 if ($LASTEXITCODE -ne 0) {

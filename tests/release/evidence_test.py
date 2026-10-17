@@ -16,28 +16,28 @@ class EvidenceGeneratorTest(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             artifacts = pathlib.Path(directory)
             names = (
-                "nli_client_ver13.rpm",
-                "nli_clinet_ver13.rpm",
-                "nli_controller_agent_ver13.rpm",
-                "webview_ver13.zip",
-                "webapp_ver13.zip",
-                "install-controller-ver13.sh",
-                "install-client-ver13.sh",
-                "install-controller-aws-ver13.sh",
-                "install-client-aws-ver13.sh",
-                "install-controller-aws-cloudflare-ver13.sh",
-                "aws-rhel-preflight-ver13.sh",
-                "aws-security-group-plan-ver13.sh",
-                "setup-cloudflare-tunnel-v13.sh",
-                "verify-cloudflare-tunnel-v13.sh",
-                "uninstall-cloudflare-tunnel-v13.sh",
-                "cloudflare-quick-diagnosis-v13.sh",
+                "nli_client_ver14.rpm",
+                "nli_clinet_ver14.rpm",
+                "nli_controller_agent_ver14.rpm",
+                "webview_ver14.zip",
+                "webapp_ver14.zip",
+                "install-controller-ver14.sh",
+                "install-client-ver14.sh",
+                "install-controller-aws-ver14.sh",
+                "install-client-aws-ver14.sh",
+                "install-controller-aws-cloudflare-ver14.sh",
+                "aws-rhel-preflight-ver14.sh",
+                "aws-security-group-plan-ver14.sh",
+                "setup-cloudflare-tunnel-v14.sh",
+                "verify-cloudflare-tunnel-v14.sh",
+                "uninstall-cloudflare-tunnel-v14.sh",
+                "cloudflare-quick-diagnosis-v14.sh",
                 "vercel-preflight.mjs",
-                "uninstall-controller-ver13.sh",
-                "uninstall-client-ver13.sh",
+                "uninstall-controller-ver14.sh",
+                "uninstall-client-ver14.sh",
                 "INSTALLATION_AND_CONFIGURATION.md",
-                "V13_AWS_RED_HAT_INSTALLATION.md",
-                "V13_CLOUDFLARE_TUNNEL.md",
+                "V14_AWS_RED_HAT_INSTALLATION.md",
+                "V14_CLOUDFLARE_TUNNEL.md",
                 "VERCEL_DEPLOYMENT.md",
                 "CLOUDFLARE_PAGES_DEPLOYMENT.md",
                 "WEBAPP_OPERATOR_AND_PARSER_GUIDE.md",
@@ -52,12 +52,12 @@ class EvidenceGeneratorTest(unittest.TestCase):
                 elif name == "SAMPLE_FIELD_ACCOUNTING.json":
                     content = b'{"verdict":"pass"}\n'
                 elif name == "RELEASE_ID":
-                    content = b"NLI_VERSION=13.0.0\nNLI_RELEASE=1\nNLI_ARCH=x86_64\nSOURCE_REVISION=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
+                    content = b"NLI_VERSION=14.0.0\nNLI_RELEASE=1\nNLI_ARCH=x86_64\nSOURCE_REVISION=aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n"
                 else:
                     content = f"fixture-{index}".encode()
                 (artifacts / name).write_bytes(content)
             (artifacts / "SOURCE_BINARY_PROVENANCE.txt").write_text(
-                "\tmod\tnexora.local/nli-v13\t(devel)\n"
+                "\tmod\tnexora.local/nli-v14\t(devel)\n"
                 "\tdep\texample.invalid/module\tv1.2.3\th1:AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=\n",
                 encoding="utf-8",
             )
@@ -67,7 +67,7 @@ class EvidenceGeneratorTest(unittest.TestCase):
                 sys.executable,
                 str(generator),
                 "--artifacts", str(artifacts),
-                "--version", "13.0.0",
+                "--version", "14.0.0",
                 "--release", "1",
                 "--revision", "a" * 40,
                 "--source-date-epoch", "1791200000",

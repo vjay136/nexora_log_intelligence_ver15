@@ -7,8 +7,8 @@ import (
 	"path/filepath"
 	"testing"
 
-	"nexora.local/nli-v13/internal/adapter"
-	"nexora.local/nli-v13/internal/engine"
+	"nexora.local/nli-v14/internal/adapter"
+	"nexora.local/nli-v14/internal/engine"
 )
 
 func TestApplyDerivesEmailAndIPv4Buckets(t *testing.T) {

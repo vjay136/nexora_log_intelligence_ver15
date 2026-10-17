@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "product": "Nexora Log Inetelligence Ver13",
+  "product": "Nexora Log Intelligence Ver14",
   "source_corpus": {
     "manifest": "testdata/migration/sample-logs/manifest.json",
     "sha256": "29ed50f36785fdf0f5693ab2a44d3613348b0898ec078567836286fac1781fa6",

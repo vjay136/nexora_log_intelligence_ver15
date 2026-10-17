@@ -1,12 +1,12 @@
-# NLI V13 engineering decisions
+# NLI V14 engineering decisions
 
 ## Installation and trust
 
-V13 separates package authenticity from transport identity:
+V14 separates package authenticity from transport identity:
 
 - RPM SHA-256 and optional RPM/GPG signatures prove that a package was not changed after release.
 - TLS certificates prove the controller endpoint identity and encrypt controller/client traffic.
-- A GPG key cannot replace TLS and embedding a shared private key in an RPM would give every installation the same compromised identity. V13 never packages a TLS private key or a reusable enrollment secret.
+- A GPG key cannot replace TLS and embedding a shared private key in an RPM would give every installation the same compromised identity. V14 never packages a TLS private key or a reusable enrollment secret.
 - The default restricted-network path creates a unique controller-local private CA and a server certificate containing the controller's actual IP/DNS identities. The one-use client bootstrap contains only the CA certificate, controller URL, and a single-use enrollment token.
 - Corporate PKI and public ACME remain optional. Controller installation and client enrollment do not depend on public DNS, Nginx, ACME, Cloudflare, Supabase, or Internet access.
 
@@ -41,7 +41,7 @@ ClickHouse recommends batching at least 1,000 rows for synchronous inserts, pref
 
 ## Throughput claim
 
-V13 uses streaming file reads, bounded line sizes, cached compiled parsers, reused HTTP clients, bounded queues, and backpressure. Ten million lines per second is a hardware, line-size, parser-complexity, storage, and destination-dependent target; it is not a portable single-node guarantee. Release evidence reports measured throughput from the included benchmark instead of claiming an unmeasured number.
+V14 uses streaming file reads, bounded line sizes, cached compiled parsers, reused HTTP clients, bounded queues, and backpressure. Ten million lines per second is a hardware, line-size, parser-complexity, storage, and destination-dependent target; it is not a portable single-node guarantee. Release evidence reports measured throughput from the included benchmark instead of claiming an unmeasured number.
 
-Go's scanner defaults to a 64 KiB token ceiling unless the caller configures a larger bound; V13 keeps explicit input bounds to prevent unbounded memory use: <https://pkg.go.dev/bufio>.
+Go's scanner defaults to a 64 KiB token ceiling unless the caller configures a larger bound; V14 keeps explicit input bounds to prevent unbounded memory use: <https://pkg.go.dev/bufio>.
 

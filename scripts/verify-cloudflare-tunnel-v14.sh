@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
-PREFIX=verify-cloudflare-tunnel-v13
+PREFIX=verify-cloudflare-tunnel-v14
 fail() { printf '%s: FAIL: %s\n' "$PREFIX" "$*" >&2; exit 1; }
 pass() { printf '%s: PASS: %s\n' "$PREFIX" "$*"; }
 [[ $EUID -eq 0 ]] || { echo "$PREFIX: run with sudo/root" >&2; exit 1; }

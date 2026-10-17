@@ -1,6 +1,6 @@
 {
-  "name": "nli-v13-webview-tests",
-  "version": "13.0.0",
+  "name": "nli-v14-webview-tests",
+  "version": "14.0.0",
   "private": true,
   "type": "module",
   "scripts": {

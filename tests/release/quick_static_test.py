@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fast, platform-neutral V13 release invariants for the cached quick suite."""
+"""Fast, platform-neutral V14 release invariants for the cached quick suite."""
 
 from __future__ import annotations
 
@@ -16,31 +16,31 @@ def fail(message: str) -> None:
 root = Path(sys.argv[1] if len(sys.argv) > 1 else Path(__file__).parents[2]).resolve()
 
 required = (
-    "scripts/install-controller-ver13.sh",
-    "scripts/install-client-ver13.sh",
-    "scripts/install-controller-aws-ver13.sh",
-    "scripts/install-client-aws-ver13.sh",
-    "scripts/install-controller-aws-cloudflare-ver13.sh",
-    "scripts/setup-cloudflare-tunnel-v13.sh",
-    "scripts/verify-cloudflare-tunnel-v13.sh",
-    "scripts/uninstall-cloudflare-tunnel-v13.sh",
-    "scripts/cloudflare-quick-diagnosis-v13.sh",
+    "scripts/install-controller-ver14.sh",
+    "scripts/install-client-ver14.sh",
+    "scripts/install-controller-aws-ver14.sh",
+    "scripts/install-client-aws-ver14.sh",
+    "scripts/install-controller-aws-cloudflare-ver14.sh",
+    "scripts/setup-cloudflare-tunnel-v14.sh",
+    "scripts/verify-cloudflare-tunnel-v14.sh",
+    "scripts/uninstall-cloudflare-tunnel-v14.sh",
+    "scripts/cloudflare-quick-diagnosis-v14.sh",
     "scripts/vercel-preflight.mjs",
     "wrangler.jsonc",
-    "scripts/uninstall-controller-ver13.sh",
-    "scripts/uninstall-client-ver13.sh",
+    "scripts/uninstall-controller-ver14.sh",
+    "scripts/uninstall-client-ver14.sh",
     "scripts/release/create-bundle.sh",
-    "configs/parser-catalog/nli-v13-parser-catalog.json",
-    "configs/catalog/nli-v13-parser-catalog.json",
+    "configs/parser-catalog/nli-v14-parser-catalog.json",
+    "configs/catalog/nli-v14-parser-catalog.json",
     "testdata/migration/sample-logs/manifest.json",
-    "docs/V13_AWS_RED_HAT_INSTALLATION.md",
-    "docs/V13_CLOUDFLARE_TUNNEL.md",
+    "docs/V14_AWS_RED_HAT_INSTALLATION.md",
+    "docs/V14_CLOUDFLARE_TUNNEL.md",
     "docs/VERCEL_DEPLOYMENT.md",
     "docs/CLOUDFLARE_PAGES_DEPLOYMENT.md",
 )
 for name in required:
     if not (root / name).is_file():
-        fail(f"missing V13 release input: {name}")
+        fail(f"missing V14 release input: {name}")
 
 scan_roots = ("README.md", "docs", "packaging", "scripts", "web", ".github")
 files: list[Path] = []
@@ -55,7 +55,7 @@ for name in scan_roots:
         if candidate.is_file():
             files.append(candidate)
 
-wrong_product = "Nexora Log Intelligence V13"
+wrong_product = "Nexora Log Inetelligence V14"
 publishable_key_pattern = re.compile(r"sb_publishable_[A-Za-z0-9_-]{20,}")
 live_project_pattern = re.compile(r"https://[a-z0-9]{20}\.supabase\.co", re.IGNORECASE)
 allowed_history = {root / "docs/NLI_V5_IMPLEMENTATION_SPEC.md", root / "CHANGELOG.md"}
@@ -75,10 +75,10 @@ for path in files:
     if live_project_pattern.search(text):
         fail(f"live Supabase project URL was committed in {path.relative_to(root)}")
 
-catalog_a = (root / "configs/parser-catalog/nli-v13-parser-catalog.json").read_bytes()
-catalog_b = (root / "configs/catalog/nli-v13-parser-catalog.json").read_bytes()
+catalog_a = (root / "configs/parser-catalog/nli-v14-parser-catalog.json").read_bytes()
+catalog_b = (root / "configs/catalog/nli-v14-parser-catalog.json").read_bytes()
 if catalog_a != catalog_b:
-    fail("canonical and embedded V13 parser catalogs differ")
+    fail("canonical and embedded V14 parser catalogs differ")
 
 manifest = json.loads((root / "testdata/migration/sample-logs/manifest.json").read_text(encoding="utf-8"))
 if manifest.get("sample_log_record_count") != 728:
@@ -98,4 +98,4 @@ for installer_name in required[:2]:
         if marker not in installer:
             fail(f"{installer_name} is missing mixed-release protection {marker!r}")
 
-print("V13 quick static release invariants: PASS")
+print("V14 quick static release invariants: PASS")

@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"nexora.local/nli-v13/internal/auth"
-	"nexora.local/nli-v13/internal/controlplane"
+	"nexora.local/nli-v14/internal/auth"
+	"nexora.local/nli-v14/internal/controlplane"
 )
 
 func TestResetAdminPasswordFromStdin(t *testing.T) {

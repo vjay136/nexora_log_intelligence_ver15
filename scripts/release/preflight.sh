@@ -41,11 +41,11 @@ done
 if grep -nE 'webview_ver1|v1\.0\.0|"0\.4\.0"' "${web_assets[@]}"; then
   fail "WebView contains stale release identifiers"
 fi
-for label in 'Operations' 'Assurance Lab' 'Fleet & Sync' 'Parser Catalog & Priority' \
+for label in 'Live Dashboard' 'Assurance Lab' 'Fleet Operations' 'Parser Catalog & Priority' \
   'Migration Center' 'KV Delimiter Config' 'Static Positional Patterns' \
   'Field Capture & Projection' 'Regex, Templates & Studio' 'Live Metadata' \
   'Field Integrity & Corpus Proof' 'Unknown & Quarantine' 'Template Drift' \
-  'Performance & Backpressure' \
+  'Performance & Backpressure' 'Parser Creation Workspace' 'AI Resolution & Providers' \
   'Rollouts' 'Signed Artifacts & Upgrades' 'Users, RBAC & Audit' \
   'System Health & Storage'; do
   grep -Fqi "$label" "$ROOT/web/app.js" || fail "WebView gate missing: $label"

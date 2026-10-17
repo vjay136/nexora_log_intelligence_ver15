@@ -1,4 +1,4 @@
--- NLI V13 Supabase metadata schema (RPC schema version 1).
+-- NLI V14 Supabase metadata schema (RPC schema version 1).
 -- Do not run this template directly. `sudo nli-controller-setup` renders an
 -- installation-specific copy at /root/nli-supabase-bootstrap.sql.
 
@@ -301,7 +301,7 @@ grant execute on function public.nli_list_documents(text,text,integer,integer) t
 grant execute on function public.nli_delete_document(text,text,boolean,text) to anon;
 
 comment on table public.nli_documents is
-  'NLI V13 revisioned control-plane metadata. Assurance raw logs are AES-GCM encrypted by the controller before insertion.';
+  'NLI V14 revisioned control-plane metadata. Assurance raw logs are AES-GCM encrypted by the controller before insertion.';
 
 notify pgrst, 'reload schema';
 commit;

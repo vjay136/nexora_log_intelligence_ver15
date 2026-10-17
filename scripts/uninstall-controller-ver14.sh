@@ -3,10 +3,10 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Uninstall the NLI v13 controller.
+Uninstall the NLI v14 controller.
 
 Usage:
-  sudo bash uninstall-controller-ver13.sh [--yes] [--purge]
+  sudo bash uninstall-controller-ver14.sh [--yes] [--purge]
 
 The default removal preserves controller configuration, users, TLS material,
 and state for recovery or reinstall. --purge permanently removes those local
@@ -15,8 +15,8 @@ deleted by this script.
 EOF
 }
 
-fail() { printf 'uninstall-controller-ver13: %s\n' "$*" >&2; exit 1; }
-info() { printf 'uninstall-controller-ver13: %s\n' "$*"; }
+fail() { printf 'uninstall-controller-ver14: %s\n' "$*" >&2; exit 1; }
+info() { printf 'uninstall-controller-ver14: %s\n' "$*"; }
 
 assume_yes=0
 purge=0
@@ -123,7 +123,8 @@ if [[ $purge -eq 1 ]]; then
   rm -f -- /etc/nli/controller.env /etc/nli/controller.env.rpmsave /etc/nli/controller.env.rpmnew
   rm -f -- /etc/nli/controller-edge.json
   rm -f -- /etc/nli/controller-bootstrap.env
-  rm -f -- /root/nli-client-bootstrap.env /root/nli-supabase-bootstrap.sql
+  rm -f -- /root/nli-client-bootstrap.env /root/nli-controller-credentials.env \
+    /root/nli-initial-admin-password.txt /root/nli-supabase-bootstrap.sql
   rm -rf -- /var/lib/nli-controller
   info 'local controller configuration and state were purged; Supabase cloud data was not changed'
 else

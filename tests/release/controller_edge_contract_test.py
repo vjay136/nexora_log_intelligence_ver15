@@ -11,8 +11,8 @@ import sys
 
 root = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else pathlib.Path(__file__).parents[2])
 setup = (root / "scripts/setup-controller-rocky.sh").read_text(encoding="utf-8")
-uninstall = (root / "scripts/uninstall-controller-ver13.sh").read_text(encoding="utf-8")
-installer = (root / "scripts/install-controller-ver13.sh").read_text(encoding="utf-8")
+uninstall = (root / "scripts/uninstall-controller-ver14.sh").read_text(encoding="utf-8")
+installer = (root / "scripts/install-controller-ver14.sh").read_text(encoding="utf-8")
 docs = (root / "docs/INSTALLATION_AND_CONFIGURATION.md").read_text(encoding="utf-8")
 spec = (root / "packaging/rpm/nli-controller-agent.spec").read_text(encoding="utf-8")
 
@@ -68,8 +68,25 @@ for token in (
     "selinux_proxy_boolean_prior_persistent",
     "setsebool -P httpd_can_network_connect \"$selinux_setup_prior_persistent\"",
     "setsebool httpd_can_network_connect \"$selinux_setup_prior_current\"",
+    "discover_host_identities",
+    "X-aws-ec2-metadata-token",
+    "NLI_AUDIT_HMAC_KEY",
+    "NLI_CSRF_HMAC_KEY",
+    "/root/nli-controller-credentials.env",
+    "existing_or_random_secret NLI_AUDIT_HMAC_KEY audit.key",
+    "existing_or_random_secret NLI_CSRF_HMAC_KEY csrf.key",
+    "existing_or_random_secret NLI_ASSURANCE_ENCRYPTION_KEY assurance.key",
+    "$STATE_DIR/quarantine-metadata/quarantine.key",
+    "controller is running but TCP ${PORT} is not listening",
+    "EC2 security group must allow inbound TCP ${PORT}",
 ):
     require(token in setup, f"controller edge contract missing: {token}")
+
+require(setup.count("assurance_key=$(existing_or_random_secret") == 1 and
+        "assurance_key=$(read_env NLI_ASSURANCE_ENCRYPTION_KEY)" not in setup,
+        "Supabase setup must not rotate the resolved Assurance encryption key")
+require("[[ -z $value && -s $CREDENTIAL_FILE ]]" in setup,
+        "reconfiguration must recover missing environment values from the root-only credential snapshot")
 
 preflight = setup.index("if [[ $mode == 3 || $mode == 9 ]]; then")
 acme_setup = setup.index("if [[ $mode == 9 ]]; then", preflight)
@@ -163,7 +180,7 @@ with tempfile.TemporaryDirectory() as directory:
         "configured_at": "2026-10-14T00:00:00+00:00",
     }, "the edge manifest writer must replace old content with the expected secret-free schema")
 require("--quickstart" in installer and "--mode" in installer and "NLI_SETUP_MODE=$deployment_mode" in installer,
-        "V13 installer must expose explicit deployment-mode selection")
+        "V14 installer must expose explicit deployment-mode selection")
 require("Nginx and Apache only configure this host" in docs,
         "installation docs must state that reverse proxies cannot create public IP or DNS")
 require("Mode 10" in docs and "Mode 9" in docs and "NLI_CONTROLLER_ORIGIN" in docs,

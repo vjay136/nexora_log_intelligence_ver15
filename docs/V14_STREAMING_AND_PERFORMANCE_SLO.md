@@ -1,6 +1,6 @@
-# NLI V13 streaming and performance SLO
+# NLI V14 streaming and performance SLO
 
-This document defines the measurements used to accept V13. It does not turn a
+This document defines the measurements used to accept V14. It does not turn a
 hardware-dependent throughput target into a product guarantee.
 
 ## Operator story
@@ -30,7 +30,7 @@ the live counters.
 ## Throughput qualification
 
 The requested 5 GiB in ten minutes requires at least 8.53 MiB/s of sustained
-end-to-end throughput. Five GiB in one minute requires 85.33 MiB/s. V13 records
+end-to-end throughput. Five GiB in one minute requires 85.33 MiB/s. V14 records
 the measured host, storage, parser mix, worker count, output destination, input
 size, records, elapsed time, bytes per second, records per second, normalized
 count, quarantine count, and output acknowledgement count.
@@ -69,7 +69,7 @@ credentials.
 
 ## High-volume thresholds
 
-Thresholds are configuration, not parser decisions. V13 evaluates configured
+Thresholds are configuration, not parser decisions. V14 evaluates configured
 read-lines, bytes, quarantine-rate, and queue-depth thresholds. The current
 source-parallel runtime has no asynchronous record queue and therefore reports
 queue depth and capacity as zero instead of inventing backlog. The UI also marks
@@ -79,7 +79,7 @@ breached condition and timestamp.
 ## Verified qualification result
 
 On the recorded Linux/amd64 Docker host (six logical CPUs, four sources and four
-source workers), V13 processed 5 GiB of generated JSONL through the production
+source workers), V14 processed 5 GiB of generated JSONL through the production
 agent, reviewed ParserPack attempt/fallback path, durable local JSONL output, and
 durable checkpoints in 466.717 seconds (10.97 MiB/s). All 1,310,720 records and
 5,368,709,120 bytes were accounted for, output JSON was valid, checkpoint bytes

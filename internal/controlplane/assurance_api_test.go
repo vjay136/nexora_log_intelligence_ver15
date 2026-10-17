@@ -48,6 +48,36 @@ func TestAssuranceScoreAndParserCandidateLifecycle(t *testing.T) {
 	}
 }
 
+func TestParserCreationWorkspaceDraftCanBeReadEditedAndDeleted(t *testing.T) {
+	f := newAPIFixture(t)
+	parser := map[string]any{
+		"pattern_type": "regex", "pattern": `status=(?P<status>\w+)`,
+		"fields": []any{map[string]any{"name": "status", "source": "group:status", "type": "string"}},
+	}
+	cases := []any{map[string]any{"raw": "status=OK", "desired": map[string]any{"status": "OK"}}}
+	response, data := f.request(http.MethodPost, "/api/v1/assurance/parsers", map[string]any{"id": "workspace-sample", "name": "Workspace sample", "version": "0.1.0", "parser": parser, "cases": cases})
+	if response.StatusCode != http.StatusCreated {
+		t.Fatalf("create %d: %s", response.StatusCode, data)
+	}
+	response, data = f.request(http.MethodGet, "/api/v1/assurance/parsers/workspace-sample", nil)
+	if response.StatusCode != http.StatusOK || !bytes.Contains(data, []byte(`"Workspace sample"`)) {
+		t.Fatalf("get %d: %s", response.StatusCode, data)
+	}
+	response, data = f.request(http.MethodPut, "/api/v1/assurance/parsers/workspace-sample", map[string]any{"name": "Workspace revised", "version": "0.2.0", "parser": parser, "cases": cases})
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("update %d: %s", response.StatusCode, data)
+	}
+	updated := decodeMap(t, data)
+	validation, _ := updated["validation"].(map[string]any)
+	if validation["score"] != float64(100) {
+		t.Fatalf("update was not authoritatively validated: %s", data)
+	}
+	response, data = f.request(http.MethodDelete, "/api/v1/assurance/parsers/workspace-sample", map[string]any{})
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("delete %d: %s", response.StatusCode, data)
+	}
+}
+
 func TestAssuranceNormalizesLineEndingsAndReturnsParserCreationHelper(t *testing.T) {
 	f := newAPIFixture(t)
 	raw := "method=mail.message.list user=alice@example.test   \r\nfromhost=192.0.2.10\t\r\n\r\n"
@@ -136,6 +166,24 @@ func TestAIProviderDefaultsAndAllowlist(t *testing.T) {
 	}
 	if err := validateProvider(aiProviderConfig{Provider: "custom", BaseURL: "http://provider.example.com/v1", Model: "x", APIKey: "test-api-key"}); err == nil {
 		t.Fatal("non-loopback plaintext provider endpoint was accepted")
+	}
+}
+
+func TestAIProviderStatusNeverReturnsCredential(t *testing.T) {
+	f := newAPIFixture(t)
+	secret := "provider-secret-value-1234"
+	if err := f.server.storeAIProvider(context.Background(), aiProviderConfig{Provider: "openai", BaseURL: "https://api.openai.com/v1", Model: "test-model", APIKey: secret}, "admin"); err != nil {
+		t.Fatal(err)
+	}
+	response, data := f.request(http.MethodGet, "/api/v1/admin/ai-provider", nil)
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("provider status %d: %s", response.StatusCode, data)
+	}
+	if bytes.Contains(data, []byte(secret)) || bytes.Contains(data, []byte(`"api_key"`)) || bytes.Contains(data, []byte(`"ciphertext"`)) {
+		t.Fatalf("provider status disclosed secret material: %s", data)
+	}
+	if !bytes.Contains(data, []byte(`"key_last4":"1234"`)) {
+		t.Fatalf("provider status did not return the bounded credential hint: %s", data)
 	}
 }
 

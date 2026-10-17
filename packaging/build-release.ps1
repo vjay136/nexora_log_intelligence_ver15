@@ -51,7 +51,7 @@ foreach ($name in $paths) { New-Item -ItemType Directory -Path (Join-Path $scrat
 
 Invoke-Docker @('run','--rm','--mount',"type=bind,src=$Root,dst=/src,readonly",'--workdir','/src',$images.GO_IMAGE,'bash','-lc','export PATH=/usr/local/go/bin:/usr/bin:/bin; git config --global --add safe.directory /src; bash scripts/release/preflight.sh')
 
-function Build-Binaries([string]$Destination) {
+function Build-Binaries([string]$Destination, [int]$SkipTests = 0) {
     Invoke-Docker @(
         'run','--rm',
         '--mount',"type=bind,src=$Root,dst=/src,readonly",
@@ -59,7 +59,7 @@ function Build-Binaries([string]$Destination) {
         '--mount',"type=bind,src=$(Join-Path $scratch 'go-cache'),dst=/cache/go-build",
         '--mount',"type=bind,src=$(Join-Path $scratch 'go-mod'),dst=/cache/go-mod",
         '--workdir','/src',
-        '-e','ROOT=/src','-e','OUTPUT_DIR=/out','-e',"SOURCE_REVISION=$revision",'-e',"SOURCE_DATE_EPOCH=$epoch",
+        '-e','ROOT=/src','-e','OUTPUT_DIR=/out','-e',"SOURCE_REVISION=$revision",'-e',"SOURCE_DATE_EPOCH=$epoch",'-e',"NLI_SKIP_TESTS=$SkipTests",
         '-e','GOCACHE=/cache/go-build','-e','GOMODCACHE=/cache/go-mod',
         $images.GO_IMAGE,'bash','-lc','export PATH=/usr/local/go/bin:/usr/bin:/bin; bash packaging/build-binaries.sh'
     )
@@ -80,11 +80,11 @@ function Build-Rpms([string]$Binaries, [string]$Destination, [string]$Work) {
 
 $pass1 = Join-Path $scratch 'pass1'; $pass2 = Join-Path $scratch 'pass2'
 $pass1Rpm = Join-Path $scratch 'pass1-rpm'; $pass2Rpm = Join-Path $scratch 'pass2-rpm'
-Build-Binaries $pass1
+Build-Binaries $pass1 0
 Build-Rpms $pass1 $pass1Rpm (Join-Path $scratch 'pass1-work')
-Build-Binaries $pass2
+Build-Binaries $pass2 1
 Build-Rpms $pass2 $pass2Rpm (Join-Path $scratch 'pass2-work')
-foreach ($name in @('nli_client_ver13.rpm','nli_clinet_ver13.rpm','nli_controller_agent_ver13.rpm','webview_ver13.zip','webapp_ver13.zip','install-controller-ver13.sh','install-client-ver13.sh','install-controller-aws-ver13.sh','install-client-aws-ver13.sh','aws-rhel-preflight-ver13.sh','aws-security-group-plan-ver13.sh','uninstall-controller-ver13.sh','uninstall-client-ver13.sh','INSTALLATION_AND_CONFIGURATION.md','V13_AWS_RED_HAT_INSTALLATION.md','WEBAPP_OPERATOR_AND_PARSER_GUIDE.md','PARSER_CATALOG.md','SOURCE_BINARY_PROVENANCE.txt','SOURCE_REVISION','WEBVIEW_SHA256SUMS','RELEASE_ID')) {
+foreach ($name in @('nli_client_ver14.rpm','nli_clinet_ver14.rpm','nli_controller_agent_ver14.rpm','webview_ver14.zip','webapp_ver14.zip','install-controller-ver14.sh','install-client-ver14.sh','install-controller-aws-ver14.sh','install-client-aws-ver14.sh','install-controller-aws-cloudflare-ver14.sh','aws-rhel-preflight-ver14.sh','aws-security-group-plan-ver14.sh','setup-cloudflare-tunnel-v14.sh','verify-cloudflare-tunnel-v14.sh','uninstall-cloudflare-tunnel-v14.sh','cloudflare-quick-diagnosis-v14.sh','vercel-preflight.mjs','uninstall-controller-ver14.sh','uninstall-client-ver14.sh','INSTALLATION_AND_CONFIGURATION.md','V14_AWS_RED_HAT_INSTALLATION.md','V14_CLOUDFLARE_TUNNEL.md','VERCEL_DEPLOYMENT.md','CLOUDFLARE_PAGES_DEPLOYMENT.md','WEBAPP_OPERATOR_AND_PARSER_GUIDE.md','PARSER_CATALOG.md','SOURCE_BINARY_PROVENANCE.txt','SOURCE_REVISION','WEBVIEW_SHA256SUMS','RELEASE_ID')) {
     $a = Get-Sha256 (Join-Path $pass1Rpm $name)
     $b = Get-Sha256 (Join-Path $pass2Rpm $name)
     if ($a -ne $b) { throw "Non-deterministic output: $name" }

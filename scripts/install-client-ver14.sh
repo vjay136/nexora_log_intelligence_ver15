@@ -3,14 +3,14 @@ set -euo pipefail
 
 usage() {
   cat <<'EOF'
-Install, enroll, and start a Nexora Log Inetelligence Ver13 client on Rocky Linux 9 or 10.
+Install, enroll, and start a Nexora Log Intelligence Ver14 client on Rocky Linux 9 or 10.
 
 Usage:
-  sudo bash install-client-ver13.sh [--rpm /path/to/nli_client_ver13.rpm]
+  sudo bash install-client-ver14.sh [--rpm /path/to/nli_client_ver14.rpm]
                                       [--bootstrap /path/to/nli-client-bootstrap.env]
-                                      [--automatic]
-  sudo bash install-client-ver13.sh --configure-only
-  sudo bash install-client-ver13.sh --verify-only [--rpm /path/to/rpm]
+                                      [--automatic|--all-log-files]
+  sudo bash install-client-ver14.sh --configure-only
+  sudo bash install-client-ver14.sh --verify-only [--rpm /path/to/rpm]
 
 With no options, the script finds the RPM and bootstrap file beside this
 script or in the current directory. If no bootstrap file is found, it prompts
@@ -25,11 +25,15 @@ reinstalling or re-enrolling the client.
 --automatic enables every bundled parser family, creates all ten standard
 input files and their family normal/quarantine outputs, and selects local
 JSONL without asking parser/output questions.
+
+--all-log-files is the descriptive alias for --automatic. It preserves
+existing files, creates missing inputs/outputs with nli ownership, verifies
+every reviewed parser pack, and attaches the matching family automatically.
 EOF
 }
 
-fail() { printf 'install-client-ver13: %s\n' "$*" >&2; exit 1; }
-info() { printf 'install-client-ver13: %s\n' "$*"; }
+fail() { printf 'install-client-ver14: %s\n' "$*" >&2; exit 1; }
+info() { printf 'install-client-ver14: %s\n' "$*"; }
 
 validate_rpm_release() {
   local value=$1 label=$2 expected=$3 numeric
@@ -45,7 +49,7 @@ load_release_identity() {
   expected_release=$(awk -F= '$1=="NLI_RELEASE" {print $2; exit}' "$marker")
   expected_arch=$(awk -F= '$1=="NLI_ARCH" {print $2; exit}' "$marker")
   expected_revision=$(awk -F= '$1=="SOURCE_REVISION" {print $2; exit}' "$marker")
-  [[ $expected_version == 13.0.0 ]] || fail "invalid bundle version in RELEASE_ID: $expected_version"
+  [[ $expected_version == 14.0.0 ]] || fail "invalid bundle version in RELEASE_ID: $expected_version"
   [[ $expected_release =~ ^[1-9][0-9]*$ ]] || fail "invalid bundle release in RELEASE_ID: $expected_release"
   [[ $expected_arch == x86_64 ]] || fail "invalid bundle architecture in RELEASE_ID: $expected_arch"
   [[ $expected_revision =~ ^[0-9a-f]{40}$ ]] || fail 'invalid source revision in RELEASE_ID'
@@ -54,9 +58,9 @@ load_release_identity() {
 verify_release_bundle() {
   local checksum_file=$1 required
   [[ -f $checksum_file ]] || fail 'SHA256SUMS is missing; extract the complete versioned release archive into a fresh directory'
-  for required in RELEASE_ID nli_client_ver13.rpm nli_clinet_ver13.rpm nli_controller_agent_ver13.rpm \
-    webview_ver13.zip webapp_ver13.zip install-controller-ver13.sh install-client-ver13.sh \
-    uninstall-controller-ver13.sh uninstall-client-ver13.sh INSTALLATION_AND_CONFIGURATION.md \
+  for required in RELEASE_ID nli_client_ver14.rpm nli_clinet_ver14.rpm nli_controller_agent_ver14.rpm \
+    webview_ver14.zip webapp_ver14.zip install-controller-ver14.sh install-client-ver14.sh \
+    uninstall-controller-ver14.sh uninstall-client-ver14.sh INSTALLATION_AND_CONFIGURATION.md \
     WEBAPP_OPERATOR_AND_PARSER_GUIDE.md PARSER_CATALOG.md \
     BENCHMARKS.txt SAMPLE_FIELD_ACCOUNTING.json; do
     awk -v name="$required" '$2==name && $1 ~ /^[0-9a-f]{64}$/ {found=1} END {exit !found}' "$checksum_file" ||
@@ -513,6 +517,26 @@ for item in value.get("inputs", []):
 PY
   )
 
+  # Materialize the current-hour files during setup so operators can verify
+  # every configured family before the first production record arrives.
+  if [[ ${input_paths,,} == automatic ]]; then
+    current_hour=$(date -u +%Y%m%d_%H00)
+    while IFS= read -r configured_output; do
+      [[ -n $configured_output ]] || continue
+      configured_output=${configured_output//\{hour_utc\}/$current_hour}
+      install -d -o nli -g nli -m 0750 "$(dirname "$configured_output")"
+      [[ -e $configured_output ]] || install -o nli -g nli -m 0640 /dev/null "$configured_output"
+    done < <(python3 - "$agent_config" <<'PY'
+import json, pathlib, sys
+value = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+for item in value.get("outputs", []):
+    path = item.get("path_template") or item.get("path")
+    if path and path.startswith("/var/log/nli/"):
+        print(path)
+PY
+    )
+  fi
+
   if [[ ${input_paths,,} == automatic ]]; then
     python3 - "$agent_config" <<'PY'
 import json
@@ -614,7 +638,7 @@ while [[ $# -gt 0 ]]; do
       configure_only=1
       shift
       ;;
-    --automatic)
+    --automatic|--all-log-files)
       automatic_config=1
       shift
       ;;
@@ -651,12 +675,12 @@ load_release_identity "$script_dir/RELEASE_ID"
 verify_release_bundle "$script_dir/SHA256SUMS"
 
 if [[ -z $rpm_path ]]; then
-  for candidate in "$script_dir/nli_client_ver13.rpm" "$script_dir/nli_clinet_ver13.rpm" "$PWD/nli_client_ver13.rpm" "$PWD/nli_clinet_ver13.rpm"; do
+  for candidate in "$script_dir/nli_client_ver14.rpm" "$script_dir/nli_clinet_ver14.rpm" "$PWD/nli_client_ver14.rpm" "$PWD/nli_clinet_ver14.rpm"; do
     if [[ -f $candidate ]]; then rpm_path=$candidate; break; fi
   done
 fi
 if [[ -z $rpm_path && -t 0 ]]; then
-  read -r -p 'Path to nli_client_ver13.rpm: ' rpm_path
+  read -r -p 'Path to nli_client_ver14.rpm: ' rpm_path
 fi
 [[ -f $rpm_path ]] || fail 'client RPM was not found; place it beside this script or pass --rpm PATH'
 rpm_path=$(readlink -f -- "$rpm_path")
@@ -668,7 +692,7 @@ validate_rpm_release "$rpm_release" client "$expected_release"
 [[ $(rpm -qp --qf '%{ARCH}' "$rpm_path") == "$expected_arch" ]] || fail "the selected client RPM is not $expected_arch"
 
 checksum_file="$script_dir/SHA256SUMS"
-expected=$(awk '$2=="nli_client_ver13.rpm" {print $1; exit}' "$checksum_file")
+expected=$(awk '$2=="nli_client_ver14.rpm" {print $1; exit}' "$checksum_file")
 actual=$(sha256sum "$rpm_path" | awk '{print $1}')
 [[ $actual == "$expected" ]] || fail 'client RPM SHA-256 does not match this release bundle'
 info 'client RPM SHA-256 verified'

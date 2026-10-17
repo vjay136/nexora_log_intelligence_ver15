@@ -10,6 +10,7 @@ SUPABASE_SCHEMA_TEMPLATE=${NLI_SUPABASE_SCHEMA_TEMPLATE:-/usr/share/nli/supabase
 SUPABASE_BOOTSTRAP_FILE=${NLI_SUPABASE_BOOTSTRAP_FILE:-/root/nli-supabase-bootstrap.sql}
 PORT=${NLI_CONTROLLER_PORT:-12382}
 BOOTSTRAP_PASSWORD_FILE=${NLI_BOOTSTRAP_ADMIN_PASSWORD_FILE:-$STATE_DIR/bootstrap-admin-password}
+CREDENTIAL_FILE=${NLI_CONTROLLER_CREDENTIAL_FILE:-/root/nli-controller-credentials.env}
 rotate_enrollment=0
 if [[ ${1:-} == --rotate-enrollment ]]; then
   rotate_enrollment=1
@@ -25,14 +26,58 @@ for command in python3 curl systemctl openssl base64 hostname sha256sum ss; do c
 [[ -f $SUPABASE_SCHEMA_TEMPLATE ]] || fail "Supabase schema template is missing: $SUPABASE_SCHEMA_TEMPLATE"
 
 read_env() {
-  local key=$1
-  sed -n "s/^${key}=//p" "$ENV_FILE" | tail -n 1
+  local key=$1 value
+  value=$(sed -n "s/^${key}=//p" "$ENV_FILE" | tail -n 1)
+  if [[ -z $value && -s $CREDENTIAL_FILE ]]; then
+    value=$(sed -n "s/^${key}=//p" "$CREDENTIAL_FILE" | tail -n 1)
+  fi
+  printf '%s\n' "$value"
 }
 valid_env_secret() {
-  [[ $1 =~ ^[A-Za-z0-9._~!@#%^+=,:-]+$ ]]
+  [[ $1 =~ ^[A-Za-z0-9._~!@#%^+=,:/-]+$ ]]
 }
 random_secret() {
   od -An -N32 -tx1 /dev/urandom | tr -d ' \n'
+}
+existing_or_random_secret() {
+  local env_name=$1 state_name=$2 value
+  value=$(read_env "$env_name")
+  if [[ -z $value && -s $STATE_DIR/$state_name ]]; then
+    IFS= read -r value <"$STATE_DIR/$state_name" || true
+  fi
+  printf '%s\n' "${value:-$(random_secret)}"
+}
+
+# Collect identities without making cloud metadata a dependency. IMDSv2 is
+# queried only through the link-local AWS endpoint and every request is bounded.
+discover_host_identities() {
+  local value token=''
+  {
+    hostname 2>/dev/null || true
+    hostname -s 2>/dev/null || true
+    hostname -f 2>/dev/null || true
+    hostname -I 2>/dev/null | tr ' ' '\n' || true
+    if token=$(curl -fsS --connect-timeout 1 --max-time 2 -X PUT \
+      -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' \
+      http://169.254.169.254/latest/api/token 2>/dev/null); then
+      for value in local-ipv4 public-ipv4 local-hostname public-hostname; do
+        curl -fsS --connect-timeout 1 --max-time 2 \
+          -H "X-aws-ec2-metadata-token: $token" \
+          "http://169.254.169.254/latest/meta-data/$value" 2>/dev/null || true
+        printf '\n'
+      done
+    fi
+  } | sed -E 's/^[[:space:]]+//; s/[[:space:]]+$//' | sed '/^$/d' | awk '!seen[tolower($0)]++'
+}
+
+first_discovered_identity() {
+  local value fallback=''
+  while IFS= read -r value; do
+    [[ $value == localhost || $value == localhost.localdomain || $value == 127.* || $value == ::1 ]] && continue
+    [[ -n $fallback ]] || fallback=$value
+    [[ $value == *.* && ! $value =~ ^[0-9.]+$ ]] && { printf '%s\n' "$value"; return 0; }
+  done < <(discover_host_identities)
+  printf '%s\n' "$fallback"
 }
 
 storage_provider=${NLI_SETUP_STORAGE_PROVIDER:-supabase}
@@ -42,10 +87,17 @@ supabase_public_key=''
 supabase_controller_secret=''
 supabase_storage_secret=''
 storage_allow_insecure=false
-assurance_key=$(read_env NLI_ASSURANCE_ENCRYPTION_KEY)
-assurance_key=${assurance_key:-$(random_secret)}
+assurance_key=$(existing_or_random_secret NLI_ASSURANCE_ENCRYPTION_KEY assurance.key)
+audit_key=$(existing_or_random_secret NLI_AUDIT_HMAC_KEY audit.key)
+csrf_key=$(existing_or_random_secret NLI_CSRF_HMAC_KEY csrf.key)
+artifact_public_keys=$(read_env NLI_ARTIFACT_ED25519_PUBLIC_KEYS)
+for secret_spec in "audit HMAC:$audit_key" "CSRF HMAC:$csrf_key" "Assurance encryption:$assurance_key"; do
+  secret_label=${secret_spec%%:*}
+  secret_value=${secret_spec#*:}
+  valid_env_secret "$secret_value" || fail "$secret_label key is not safe for a systemd EnvironmentFile"
+done
 
-printf '\nNLI v13 controller first-run setup\n'
+printf '\nNLI v14 controller first-run setup\n'
 printf '  1) Local administration through SSH tunnel (secure default)\n'
 printf '  2) Private-network TLS for separate controller/client nodes\n\n'
 printf '  3) Public DNS + Nginx + ACME certificate (automated)\n'
@@ -272,7 +324,11 @@ PY
 
 if [[ $mode == 8 ]]; then
   endpoint=${NLI_SETUP_ENDPOINT:-}
-  [[ -n $endpoint ]] || read -r -p 'Controller DNS hostname or IP used by clients: ' endpoint
+  if [[ -z $endpoint ]]; then
+    endpoint=$(first_discovered_identity)
+    [[ -n $endpoint ]] || read -r -p 'Controller DNS hostname or IP used by clients: ' endpoint
+    [[ -z $endpoint ]] || info "automatically selected controller identity $endpoint"
+  fi
   endpoint=$(python3 - "$endpoint" <<'PY'
 import ipaddress, re, sys
 value=sys.argv[1].rstrip('.')
@@ -296,7 +352,8 @@ PY
 fi
 
 if [[ $mode == 2 ]]; then
-  default_endpoint=$(hostname -f 2>/dev/null || hostname)
+  default_endpoint=$(first_discovered_identity)
+  default_endpoint=${default_endpoint:-$(hostname -f 2>/dev/null || hostname)}
   endpoint=${NLI_SETUP_ENDPOINT:-$endpoint}
   [[ -n $endpoint ]] || read -r -p "Controller DNS name or private IP [$default_endpoint]: " endpoint
   endpoint=${endpoint:-$default_endpoint}
@@ -347,6 +404,7 @@ PY
   add_tls_identity "$(hostname -s 2>/dev/null || true)"
   add_tls_identity "$(hostname -f 2>/dev/null || true)"
   while read -r detected_identity; do add_tls_identity "$detected_identity"; done < <(hostname -I 2>/dev/null | tr ' ' '\n' | sed '/^$/d' || true)
+  while IFS= read -r detected_identity; do add_tls_identity "$detected_identity"; done < <(discover_host_identities)
   IFS=',' read -r -a requested_tls_identities <<<"$additional_tls_identities"
   for requested_identity in "${requested_tls_identities[@]:-}"; do add_tls_identity "$requested_identity"; done
   san=$(IFS=,; printf '%s' "${tls_sans[*]}")
@@ -414,7 +472,7 @@ PY
       openssl_or_fail 'private CA key generation' openssl genpkey -algorithm RSA \
         -pkeyopt rsa_keygen_bits:3072 -out "$generation_ca_key"
       openssl_or_fail 'private CA certificate generation' openssl req -x509 -new -sha256 -days 3650 \
-        -key "$generation_ca_key" -subj '/CN=NLI v13 Private Controller CA' \
+        -key "$generation_ca_key" -subj '/CN=NLI v14 Private Controller CA' \
         -addext 'basicConstraints=critical,CA:TRUE' \
         -addext 'keyUsage=critical,keyCertSign,cRLSign' \
         -out "$generation_ca_cert"
@@ -926,7 +984,7 @@ if [[ $mode == 4 ]]; then
   rm -f "$token_tmp"
   cat >/etc/systemd/system/nli-cloudflared.service <<EOF
 [Unit]
-Description=NLI v13 Cloudflare Tunnel connector
+Description=NLI v14 Cloudflare Tunnel connector
 After=network-online.target
 Wants=network-online.target
 
@@ -952,6 +1010,9 @@ fi
 
 quarantine_retention_enabled=${NLI_SETUP_QUARANTINE_RAW_RETENTION:-}
 existing_quarantine_key=$(read_env NLI_QUARANTINE_ENCRYPTION_KEY)
+if [[ -z $existing_quarantine_key && -s $STATE_DIR/quarantine-metadata/quarantine.key ]]; then
+  IFS= read -r existing_quarantine_key <"$STATE_DIR/quarantine-metadata/quarantine.key" || true
+fi
 quarantine_key=''
 
 if [[ $storage_provider == supabase ]]; then
@@ -997,10 +1058,10 @@ fi
 [[ $supabase_storage_secret == sb_secret_* ]] || fail 'Supabase Storage requires a server-only sb_secret_ key; publishable/anon keys are not accepted'
 [[ $(LC_ALL=C printf '%s' "$supabase_storage_secret" | wc -c) -ge 20 ]] || fail 'Supabase secret key is too short'
 valid_env_secret "$supabase_storage_secret" || fail 'Supabase secret key is not safe for a systemd EnvironmentFile'
-assurance_key=$(read_env NLI_ASSURANCE_ENCRYPTION_KEY)
-if [[ -z $assurance_key ]]; then
-  assurance_key=$(random_secret)
-fi
+# assurance_key was resolved before deployment-mode selection from the existing
+# environment or state file.  Do not regenerate it merely because Supabase is
+# selected: retained Assurance fixtures must remain decryptable after an
+# upgrade or reconfiguration.
 valid_env_secret "$assurance_key" || fail 'Assurance encryption key is not safe for a systemd EnvironmentFile'
 supabase_secret_sha256=$(printf '%s' "$supabase_controller_secret" | sha256sum | awk '{print $1}')
 NLI_SETUP_SUPABASE_HASH=$supabase_secret_sha256 python3 - "$SUPABASE_SCHEMA_TEMPLATE" "$SUPABASE_BOOTSTRAP_FILE" <<'PY'
@@ -1045,6 +1106,9 @@ NLI_SETUP_SUPABASE_PUBLISHABLE_KEY="$supabase_public_key" \
 NLI_SETUP_SUPABASE_SECRET="$supabase_controller_secret" \
 NLI_SETUP_STORAGE_SECRET="$supabase_storage_secret" \
 NLI_SETUP_ASSURANCE_KEY="$assurance_key" \
+NLI_SETUP_AUDIT_KEY="$audit_key" \
+NLI_SETUP_CSRF_KEY="$csrf_key" \
+NLI_SETUP_ARTIFACT_PUBLIC_KEYS="$artifact_public_keys" \
 NLI_SETUP_QUARANTINE_KEY="$quarantine_key" \
 NLI_SETUP_QUARANTINE_ENABLED="$quarantine_retention_enabled" \
 python3 - "$ENV_FILE" "$env_tmp" <<'PY'
@@ -1054,7 +1118,10 @@ target = pathlib.Path(sys.argv[2])
 lines = source.read_text(encoding="utf-8").splitlines() if source.exists() else []
 updates = {
     "NLI_ENROLLMENT_TOKEN": os.environ["NLI_SETUP_ENROLLMENT"],
+    "NLI_AUDIT_HMAC_KEY": os.environ["NLI_SETUP_AUDIT_KEY"],
+    "NLI_CSRF_HMAC_KEY": os.environ["NLI_SETUP_CSRF_KEY"],
     "NLI_ASSURANCE_ENCRYPTION_KEY": os.environ["NLI_SETUP_ASSURANCE_KEY"],
+    "NLI_ARTIFACT_ED25519_PUBLIC_KEYS": os.environ["NLI_SETUP_ARTIFACT_PUBLIC_KEYS"],
     "SUPABASE_URL": os.environ["NLI_SETUP_SUPABASE_URL"],
     "SUPABASE_PUBLISHABLE_KEY": os.environ["NLI_SETUP_SUPABASE_PUBLISHABLE_KEY"],
     "NLI_SUPABASE_CONTROLLER_SECRET": os.environ["NLI_SETUP_SUPABASE_SECRET"],
@@ -1081,6 +1148,27 @@ target.write_text("\n".join(out) + "\n", encoding="utf-8")
 PY
 install -o root -g nli -m 0640 "$env_tmp" "$ENV_FILE"
 rm -f "$env_tmp"
+
+# Persist one authoritative root-only handoff record. Reconfiguration and RPM
+# upgrades preserve controller.env; this snapshot makes recovery explicit
+# without exposing credentials in terminal output or process arguments.
+credential_tmp=$(mktemp "${CREDENTIAL_FILE}.XXXXXX")
+cat >"$credential_tmp" <<EOF
+# NLI V14 controller credentials. Root only. Do not copy to clients.
+NLI_ENROLLMENT_TOKEN=$enrollment_token
+NLI_AUDIT_HMAC_KEY=$audit_key
+NLI_CSRF_HMAC_KEY=$csrf_key
+NLI_ASSURANCE_ENCRYPTION_KEY=$assurance_key
+NLI_ARTIFACT_ED25519_PUBLIC_KEYS=$artifact_public_keys
+NLI_QUARANTINE_ENCRYPTION_KEY=$quarantine_key
+SUPABASE_URL=$supabase_url
+SUPABASE_PUBLISHABLE_KEY=$supabase_public_key
+NLI_SUPABASE_CONTROLLER_SECRET=$supabase_controller_secret
+SUPABASE_SECRET_KEY=$supabase_storage_secret
+EOF
+install -o root -g root -m 0600 "$credential_tmp" "$CREDENTIAL_FILE"
+rm -f "$credential_tmp"
+info "controller credentials preserved at $CREDENTIAL_FILE (root-only; values are intentionally not printed)"
 
 if [[ -n $admin_password ]]; then
   install -d -o nli -g nli -m 0750 "$STATE_DIR"
@@ -1142,9 +1230,17 @@ wait_for_controller() {
     if systemctl is-active --quiet "$SERVICE" && health_json=$(curl "${health_args[@]}" 2>/dev/null); then break; fi
     sleep 1
   done
-  systemctl is-active --quiet "$SERVICE" || { journalctl -u "$SERVICE" --no-pager -n 80 >&2 || true; fail 'controller service did not become active'; }
-  health_json=$(curl "${health_args[@]}") || fail 'controller health endpoint failed'
-  printf '%s' "$health_json" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("service")=="nli-controller-agent" and d.get("api_version")=="v1"' || fail 'health endpoint is not an NLI v13 controller'
+  systemctl is-active --quiet "$SERVICE" || { journalctl -u "$SERVICE" --no-pager -n 80 >&2 || true; fail 'controller service did not become active; the journal above contains the startup cause'; }
+  if ! ss -lnt | awk -v port=":${PORT}" '$4 ~ port "$" {found=1} END {exit !found}'; then
+    journalctl -u "$SERVICE" --no-pager -n 80 >&2 || true
+    fail "controller is running but TCP ${PORT} is not listening; verify listen_address, certificate/key readability, and SELinux policy"
+  fi
+  health_json=$(curl "${health_args[@]}") || {
+    info "TCP ${PORT} is listening, but the authenticated TLS health probe failed. Check that the URL identity appears in the certificate SAN and that local/upstream firewalls permit the selected port."
+    openssl x509 -in "$tls_cert" -noout -subject -ext subjectAltName 2>/dev/null >&2 || true
+    fail 'controller health endpoint failed'
+  }
+  printf '%s' "$health_json" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("service")=="nli-controller-agent" and d.get("api_version")=="v1"' || fail 'health endpoint is not an NLI v14 controller'
 }
 
 verify_supabase() {
@@ -1228,6 +1324,10 @@ if [[ $mode == 2 || $mode == 6 ]]; then
     info "firewalld allows TCP ${PORT}; restrict the source network to managed clients in production"
   else
     info "firewalld is not active; allow TCP ${PORT} from client subnets in the host, VMware, and upstream firewalls"
+  fi
+  info "connectivity check from a client: nc -vz ${endpoint} ${PORT}"
+  if curl -fsS --connect-timeout 1 --max-time 2 -X PUT -H 'X-aws-ec2-metadata-token-ttl-seconds: 60' http://169.254.169.254/latest/api/token >/dev/null 2>&1; then
+    info "AWS detected: the EC2 security group must allow inbound TCP ${PORT} from the client security group or private CIDR; host firewalld cannot open the AWS security group"
   fi
 fi
 

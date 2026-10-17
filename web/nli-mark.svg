@@ -1,7 +1,18 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" role="img" aria-labelledby="title">
-  <title id="title">Nexora Log Inetelligence Ver13</title>
-  <defs><linearGradient id="g" x1="8" y1="8" x2="88" y2="88" gradientUnits="userSpaceOnUse"><stop stop-color="#53a5ff"/><stop offset="1" stop-color="#8b7cff"/></linearGradient></defs>
-  <rect x="4" y="4" width="88" height="88" rx="24" fill="#0c1530" stroke="#36d7db" stroke-opacity=".42" stroke-width="2"/>
-  <path d="M23 69V27h10l28 26V27h12v42H63L35 43v26z" fill="url(#g)"/>
-  <circle cx="76" cy="20" r="5" fill="#3dd598"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" role="img" aria-labelledby="title desc">
+  <title id="title">Nexora Log Intelligence eagle shield</title>
+  <desc id="desc">An original geometric eagle guarding a luminous data core.</desc>
+  <defs>
+    <linearGradient id="shield" x1="16" y1="8" x2="112" y2="120" gradientUnits="userSpaceOnUse"><stop stop-color="#142b52"/><stop offset=".52" stop-color="#08142d"/><stop offset="1" stop-color="#10123a"/></linearGradient>
+    <linearGradient id="feather" x1="22" y1="30" x2="106" y2="96" gradientUnits="userSpaceOnUse"><stop stop-color="#64c8ff"/><stop offset=".48" stop-color="#27e1dc"/><stop offset="1" stop-color="#8b7cff"/></linearGradient>
+    <filter id="glow"><feGaussianBlur stdDeviation="2.8" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+  </defs>
+  <path d="M64 5 113 23v36c0 31-19 52-49 65C34 111 15 90 15 59V23Z" fill="url(#shield)" stroke="#4fe3df" stroke-opacity=".6" stroke-width="2"/>
+  <path d="M61 33 43 25 21 42l24-5-22 18 29-10-23 26 29-18Z" fill="url(#feather)" opacity=".95"/>
+  <path d="m67 33 18-8 22 17-24-5 22 18-29-10 23 26-29-18Z" fill="url(#feather)" opacity=".95"/>
+  <path d="M47 44 64 35l17 9-5 25-12 14-12-14Z" fill="#d9f8ff" stroke="#52e2e0" stroke-width="1.5"/>
+  <path d="m64 42-8 8 8-2 8 2Z" fill="#07142b"/>
+  <path d="m53 55 9 2-7 4Zm22 0-9 2 7 4Z" fill="#07142b"/>
+  <path d="m64 57-4 9 4 5 4-5Z" fill="#8b7cff" filter="url(#glow)"/>
+  <path d="M51 73 34 91l24-9 6 29 6-29 24 9-17-18-13 12Z" fill="url(#feather)"/>
+  <circle cx="64" cy="101" r="3" fill="#49e8d7" filter="url(#glow)"/>
 </svg>

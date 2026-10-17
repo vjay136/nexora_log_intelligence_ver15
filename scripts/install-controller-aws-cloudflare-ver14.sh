@@ -6,8 +6,8 @@ fail() { printf 'nli-aws-cloudflare-controller: %s\n' "$*" >&2; exit 1; }
 usage() {
   cat <<'EOF'
 Usage:
-  sudo bash install-controller-aws-cloudflare-ver13.sh \
-    --rpm /path/to/nli_controller_agent_ver13.rpm \
+  sudo bash install-controller-aws-cloudflare-ver14.sh \
+    --rpm /path/to/nli_controller_agent_ver14.rpm \
     --private-endpoint 10.20.1.10 \
     --public-hostname nli-controller.example.com \
     --tunnel-token-file /root/cloudflare-tunnel-token.txt
@@ -33,9 +33,9 @@ done
 [[ -n $rpm_path && -n $private_endpoint && -n $public_hostname && -n $tunnel_token_file ]] || { usage >&2; exit 1; }
 [[ ${EUID:-$(id -u)} -eq 0 ]] || fail 'run with sudo/root'
 
-bash "$SCRIPT_DIR/install-controller-aws-ver13.sh" "$rpm_path" "$private_endpoint"
-bash "$SCRIPT_DIR/setup-cloudflare-tunnel-v13.sh" --hostname "$public_hostname" --token-file "$tunnel_token_file"
-bash "$SCRIPT_DIR/verify-cloudflare-tunnel-v13.sh"
+bash "$SCRIPT_DIR/install-controller-aws-ver14.sh" "$rpm_path" "$private_endpoint"
+bash "$SCRIPT_DIR/setup-cloudflare-tunnel-v14.sh" --hostname "$public_hostname" --token-file "$tunnel_token_file"
+bash "$SCRIPT_DIR/verify-cloudflare-tunnel-v14.sh"
 
 printf '\nAWS private controller and Cloudflare public route are healthy.\n'
 printf 'Set this server-only Vercel variable, then redeploy:\n'

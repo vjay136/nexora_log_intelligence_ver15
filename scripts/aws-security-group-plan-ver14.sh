@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 fail() { printf 'aws-security-group-plan: %s\n' "$*" >&2; exit 1; }
-[[ $# -eq 3 ]] || fail 'usage: bash aws-security-group-plan-ver13.sh <controller-sg-id> <client-sg-id> <admin-source-cidr>'
+[[ $# -eq 3 ]] || fail 'usage: bash aws-security-group-plan-ver14.sh <controller-sg-id> <client-sg-id> <admin-source-cidr>'
 controller_sg=$1 client_sg=$2 admin_cidr=$3
 [[ $controller_sg =~ ^sg-[0-9a-fA-F]{8,17}$ && $client_sg =~ ^sg-[0-9a-fA-F]{8,17}$ ]] || fail 'security group IDs must be valid sg- identifiers'
 [[ $controller_sg != "$client_sg" ]] || fail 'controller and client security groups must be distinct'
