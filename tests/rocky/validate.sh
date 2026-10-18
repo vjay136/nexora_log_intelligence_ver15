@@ -7,9 +7,9 @@ TEST_ROOT=${TEST_ROOT:-/tests}
 REQUIRE_PREVIOUS=${REQUIRE_PREVIOUS:-1}
 fail() { echo "Rocky validation: $*" >&2; exit 1; }
 
-client="$ARTIFACT_DIR/nli_client_ver14.rpm"
-alias="$ARTIFACT_DIR/nli_clinet_ver14.rpm"
-controller="$ARTIFACT_DIR/nli_controller_agent_ver14.rpm"
+client="$ARTIFACT_DIR/nli_client_ver15.rpm"
+alias="$ARTIFACT_DIR/nli_clinet_ver15.rpm"
+controller="$ARTIFACT_DIR/nli_controller_agent_ver15.rpm"
 for rpm_file in "$client" "$alias" "$controller"; do
   [[ -s $rpm_file ]] || fail "missing $(basename "$rpm_file")"
   [[ $(od -An -tx1 -N4 "$rpm_file" | tr -d ' \n') == edabeedb ]] || fail "invalid RPM magic: $(basename "$rpm_file")"
@@ -28,8 +28,8 @@ if [[ -n $previous_client && -n $previous_controller ]]; then
   [[ $(rpm -qp --qf '%{NAME}' "$previous_controller") == nli-controller-agent ]] || fail "previous controller RPM has unexpected package name"
   previous_client_version=$(rpm -qp --qf '%{VERSION}' "$previous_client")
   previous_controller_version=$(rpm -qp --qf '%{VERSION}' "$previous_controller")
-  [[ $previous_client_version == 8.0.0 || $previous_client_version == 10.0.0 || $previous_client_version == 12.0.0 ]] || fail "previous client must be a genuine V8, V10, or V12 RPM"
-  [[ $previous_controller_version == 8.0.0 || $previous_controller_version == 10.0.0 || $previous_controller_version == 12.0.0 ]] || fail "previous controller must be a genuine V8, V10, or V12 RPM"
+  [[ $previous_client_version == 8.0.0 || $previous_client_version == 10.0.0 || $previous_client_version == 12.0.0 || $previous_client_version == 14.0.0 ]] || fail "previous client must be a genuine V8, V10, V12, or V14 RPM"
+  [[ $previous_controller_version == 8.0.0 || $previous_controller_version == 10.0.0 || $previous_controller_version == 12.0.0 || $previous_controller_version == 14.0.0 ]] || fail "previous controller must be a genuine V8, V10, V12, or V14 RPM"
   previous_client_nevra=$(rpm -qp --qf '%{VERSION}-%{RELEASE}' "$previous_client")
   previous_controller_nevra=$(rpm -qp --qf '%{VERSION}-%{RELEASE}' "$previous_controller")
   current_client_nevra=$(rpm -qp --qf '%{VERSION}-%{RELEASE}' "$client")
@@ -48,8 +48,8 @@ else
   dnf -y install "$client" "$controller"
 fi
 
-[[ $(rpm -q --qf '%{VERSION}' nli-client) == 14.0.0 ]] || fail "client version is not 14.0.0"
-[[ $(rpm -q --qf '%{VERSION}' nli-controller-agent) == 14.0.0 ]] || fail "controller version is not 14.0.0"
+[[ $(rpm -q --qf '%{VERSION}' nli-client) == 15.0.0 ]] || fail "client version is not 15.0.0"
+[[ $(rpm -q --qf '%{VERSION}' nli-controller-agent) == 15.0.0 ]] || fail "controller version is not 15.0.0"
 release_marker="$ARTIFACT_DIR/RELEASE_ID"
 [[ -s $release_marker ]] || fail "RELEASE_ID is missing"
 expected_release=$(sed -n 's/^NLI_RELEASE=//p' "$release_marker")
@@ -139,10 +139,10 @@ for output_family in auto imap pop webtop-webmail mta smtp-in smtp-out pabd capd
   compgen -G "/var/log/nli/output/${output_family}_quarantine_[0-9]*.jsonl" >/dev/null || fail "agent did not create hourly quarantine output: ${output_family}"
 done
 
-[[ $(nli version) == 'nli 14.0.0' ]] || fail "CLI reports the wrong version"
-[[ $(nli-agent --version) == 'nli-agent 14.0.0' ]] || fail "agent reports the wrong version"
-[[ $(nli-client-control --version) == 'nli-client-control 14.0.0' ]] || fail "client-control reports the wrong version"
-[[ $(nli-controller-agent --version) == 'nli-control 14.0.0' ]] || fail "controller reports the wrong version"
+[[ $(nli version) == 'nli 15.0.0' ]] || fail "CLI reports the wrong version"
+[[ $(nli-agent --version) == 'nli-agent 15.0.0' ]] || fail "agent reports the wrong version"
+[[ $(nli-client-control --version) == 'nli-client-control 15.0.0' ]] || fail "client-control reports the wrong version"
+[[ $(nli-controller-agent --version) == 'nli-control 15.0.0' ]] || fail "controller reports the wrong version"
 
 nli parse --service smtp --multiline=false - <"$TEST_ROOT/release/smtp_input.txt" >/tmp/smtp-actual.json
 python3 - "$TEST_ROOT/release/smtp_expected.json" /tmp/smtp-actual.json <<'PY'
@@ -165,7 +165,7 @@ grep -Fxq 'Description=Nexora Log Intelligence - Main Controller' /usr/lib/syste
 ! grep -RIEq 'vjay-hacker|vijay-hacker|vja-hacker' /usr/lib/systemd/system/nli-*.service || fail "installed service contains an old GitHub owner"
 
 curl --fail --silent --show-error -D /tmp/health.headers -o /tmp/health.json http://127.0.0.1:12382/api/v1/health
-tr -d '\r' </tmp/health.headers | grep -Eiq '^X-NLI-Controller:[[:space:]]*v14$' || fail "health endpoint does not identify the NLI V14 controller"
+tr -d '\r' </tmp/health.headers | grep -Eiq '^X-NLI-Controller:[[:space:]]*v15$' || fail "health endpoint does not identify the NLI V15 controller"
 python3 - /tmp/health.json <<'PY'
 import json, pathlib, sys
 value = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
@@ -174,7 +174,7 @@ assert value.get("api_version") == "v1"
 PY
 preflight_status=$(curl --silent --show-error -D /tmp/login-options.headers -o /dev/null -w '%{http_code}' -X OPTIONS http://127.0.0.1:12382/api/v1/auth/login)
 [[ $preflight_status == 204 ]] || fail "login preflight returned HTTP $preflight_status"
-tr -d '\r' </tmp/login-options.headers | grep -Eiq '^X-NLI-Controller:[[:space:]]*v14$' || fail "login preflight lacks controller identity"
+tr -d '\r' </tmp/login-options.headers | grep -Eiq '^X-NLI-Controller:[[:space:]]*v15$' || fail "login preflight lacks controller identity"
 grep -Eiq '^Allow:.*POST' /tmp/login-options.headers || fail "login preflight does not advertise POST"
 
 curl --fail --silent --show-error http://127.0.0.1:12382/ >/tmp/webview-index.html
@@ -190,7 +190,7 @@ grep -Fq '.auth-shell' /tmp/webview-styles.css || fail "premium WebView styles a
 grep -Fq 'const NAV' /tmp/webview-app.js || fail "WebView application script is missing"
 grep -Fq "method: 'OPTIONS'" /tmp/webview-app.js || fail "WebView does not verify the controller login contract"
 grep -Fq '<svg' /tmp/webview-logo.svg || fail "WebView logo is missing or invalid"
-[[ ! -e /usr/share/nli/webview_ver14/e2e.spec.js && ! -e /usr/share/nli/webview_ver14/package.json && ! -e /usr/share/nli/webview_ver14/playwright.config.js ]] || fail "development-only WebView files were installed"
+[[ ! -e /usr/share/nli/webview_ver15/e2e.spec.js && ! -e /usr/share/nli/webview_ver15/package.json && ! -e /usr/share/nli/webview_ver15/playwright.config.js ]] || fail "development-only WebView files were installed"
 curl --fail --silent --show-error -c /tmp/nli.cookies -H 'Content-Type: application/json' \
   -d '{"username":"admin","password":"ReleaseTestAdminPassword-2026"}' \
   http://127.0.0.1:12382/api/v1/auth/login >/tmp/login.json

@@ -1,11 +1,11 @@
-%{!?nli_version:%global nli_version 14.0.0}
+%{!?nli_version:%global nli_version 15.0.0}
 %{!?nli_release:%global nli_release 1}
 Name:           nli-client
 Version:        %{nli_version}
 Release:        %{nli_release}%{?dist}
-Summary:        Nexora Log Intelligence Ver14 parsing client
+Summary:        Nexora Log Intelligence Ver15 parsing client
 License:        LicenseRef-Proprietary
-URL:            https://github.com/vjay136/nexora_log_intelligence_ver14.git
+URL:            https://github.com/vjay136/nexora_log_intelligence_ver15.git
 Source0:        %{name}-%{version}.tar.gz
 ExclusiveArch:  x86_64
 Provides:       nli-agent = %{version}-%{release}
@@ -21,8 +21,8 @@ AutoReqProv:    no
 %global __os_install_post %{nil}
 
 %description
-NLI v14 client containing the source-derived static parser agent, CLI, benchmark
-utility, and restricted fleet-control sidecar. The nli_clinet_ver14.rpm spelling
+NLI v15 client containing the source-derived static parser agent, CLI, benchmark
+utility, and restricted fleet-control sidecar. The nli_clinet_ver15.rpm spelling
 is a byte-identical distribution filename alias, not a second RPM package.
 
 %prep
@@ -108,6 +108,9 @@ systemctl daemon-reload >/dev/null 2>&1 || :
 %doc %{_docdir}/%{name}/PARSER_CATALOG.md
 
 %changelog
+* Sat Oct 18 2026 Nexora Engineering <engineering@nexora.local> - 15.0.0-1
+- Add deterministic bounded parser concurrency, V15 parser asset sync, and Vite WebApp release support
+
 * Fri Oct 16 2026 Nexora Engineering <engineering@nexora.local> - 14.0.0-1
 - Add AWS RHEL/Rocky wrappers, private VPC defaults, Cloudflare Tunnel, and hosted-WebApp deployment contracts
 

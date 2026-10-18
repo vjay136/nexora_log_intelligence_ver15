@@ -9,7 +9,7 @@ import (
 	"sync"
 	"time"
 
-	"nexora.local/nli-v14/internal/protocol"
+	"nexora.local/nli-v15/internal/protocol"
 )
 
 const (
@@ -110,7 +110,7 @@ func NewSyncManager(config Config) *SyncManager {
 		config.MaxRetries = 5
 	}
 	if config.MinimumClientVersion == "" {
-		config.MinimumClientVersion = "14.0.0"
+		config.MinimumClientVersion = "15.0.0"
 	}
 	return &SyncManager{config: config, clients: map[string]*SyncState{}}
 }

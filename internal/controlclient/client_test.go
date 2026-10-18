@@ -2,9 +2,11 @@ package controlclient
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -16,8 +18,8 @@ import (
 	"testing"
 	"time"
 
-	"nexora.local/nli-v14/internal/protocol"
-	"nexora.local/nli-v14/internal/rollout"
+	"nexora.local/nli-v15/internal/protocol"
+	"nexora.local/nli-v15/internal/rollout"
 )
 
 type fakeExecutor struct {
@@ -189,6 +191,62 @@ func TestClientConfigPatchPreservesUnchangedSettings(t *testing.T) {
 	}
 	if executor.restarts != 1 {
 		t.Fatalf("agent restarted %d times", executor.restarts)
+	}
+}
+
+func TestParserAssetBundleSynchronizesEveryRuntimeAssetClass(t *testing.T) {
+	root := t.TempDir()
+	executor := &fakeExecutor{}
+	client, err := New(Config{
+		ControllerURL: "http://127.0.0.1:12345", AllowInsecureHTTP: true,
+		NodeTokenFile: filepath.Join(root, "node.token"), InstallIDFile: filepath.Join(root, "install.id"),
+		JournalFile: filepath.Join(root, "journal.json"), AgentConfigPath: filepath.Join(root, "nli.json"),
+		ParserDir: filepath.Join(root, "parsers"), AssetDir: filepath.Join(root, "parser-assets"),
+		PackageSpoolDir: filepath.Join(root, "packages"), PollSeconds: 5,
+	}, executor)
+	if err != nil {
+		t.Fatal(err)
+	}
+	classes := []string{"kv-config", "static-patterns", "projections", "templates", "regex-patterns", "known-keys", "semantic-extraction"}
+	bundle := synchronizedAssetBundle{SchemaVersion: 1}
+	for index, class := range classes {
+		payload, marshalErr := json.Marshal(map[string]any{"name": class + " fixture", "config": map[string]any{"enabled": true}})
+		if marshalErr != nil {
+			t.Fatal(marshalErr)
+		}
+		digest := sha256.Sum256(payload)
+		bundle.Assets = append(bundle.Assets, synchronizedAsset{
+			AssetClass: class, AssetID: fmt.Sprintf("fixture-%d", index), Name: class,
+			Revision: 1, SHA256: fmt.Sprintf("%x", digest[:]), Payload: payload,
+		})
+	}
+	bundle.BundleHash, err = synchronizedBundleHash(bundle)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bundleJSON, _ := json.Marshal(bundle)
+	payload, _ := json.Marshal(map[string]json.RawMessage{"asset_bundle": bundleJSON})
+	message, err := client.applyParsers(context.Background(), payload)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(message, "7 revisioned parser assets validated and synchronized") || executor.restarts != 1 {
+		t.Fatalf("unexpected sync result: message=%q restarts=%d", message, executor.restarts)
+	}
+	directories := map[string]string{"kv-config": "kv", "static-patterns": "static-patterns", "projections": "projections", "templates": "templates", "regex-patterns": "regex", "known-keys": "known-keys", "semantic-extraction": "semantic-extraction"}
+	for index, class := range classes {
+		path := filepath.Join(client.cfg.AssetDir, directories[class], fmt.Sprintf("fixture-%d.json", index))
+		info, statErr := os.Stat(path)
+		if statErr != nil {
+			t.Fatalf("%s was not synchronized: %v", class, statErr)
+		}
+		if info.Mode().Perm() != 0o640 {
+			t.Fatalf("%s mode = %o, want 0640", class, info.Mode().Perm())
+		}
+	}
+	hash, revisions := activeAssetBundleStatus(filepath.Join(client.cfg.AssetDir, "bundle.json"))
+	if hash != bundle.BundleHash || len(revisions) != len(classes) {
+		t.Fatalf("active bundle status mismatch: hash=%q revisions=%v", hash, revisions)
 	}
 }
 

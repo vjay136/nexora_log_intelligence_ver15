@@ -14,9 +14,9 @@ import (
 	"strings"
 	"time"
 
-	"nexora.local/nli-v14/internal/fleet"
-	"nexora.local/nli-v14/internal/middleware"
-	metastore "nexora.local/nli-v14/internal/store"
+	"nexora.local/nli-v15/internal/fleet"
+	"nexora.local/nli-v15/internal/middleware"
+	metastore "nexora.local/nli-v15/internal/store"
 )
 
 var parserAssetCollections = []string{"kv-config", "static-patterns", "projections", "templates", "regex-patterns", "known-keys", "semantic-extraction"}

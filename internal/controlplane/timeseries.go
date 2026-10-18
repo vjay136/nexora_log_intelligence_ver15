@@ -9,8 +9,8 @@ import (
 	"sync"
 	"time"
 
-	"nexora.local/nli-v14/internal/fleet"
-	metastore "nexora.local/nli-v14/internal/store"
+	"nexora.local/nli-v15/internal/fleet"
+	metastore "nexora.local/nli-v15/internal/store"
 )
 
 type aiUsageEvent struct {

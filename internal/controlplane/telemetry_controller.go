@@ -12,9 +12,9 @@ import (
 	"sync/atomic"
 	"time"
 
-	"nexora.local/nli-v14/internal/eventstore"
-	"nexora.local/nli-v14/internal/wsrelay"
-	"nexora.local/nli-v14/telemetry"
+	"nexora.local/nli-v15/internal/eventstore"
+	"nexora.local/nli-v15/internal/wsrelay"
+	"nexora.local/nli-v15/telemetry"
 )
 
 type TelemetryController struct{ store *eventstore.Store }

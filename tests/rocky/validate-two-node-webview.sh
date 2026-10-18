@@ -7,17 +7,17 @@ ARTIFACT_DIR=${1:?usage: validate-two-node-webview.sh ARTIFACT_DIR}
 # shellcheck disable=SC1091
 source "$ROOT/packaging/docker/images.env"
 ARTIFACT_DIR=$(cd "$ARTIFACT_DIR" && pwd)
-controller_rpm="$ARTIFACT_DIR/nli_controller_agent_ver14.rpm"
-client_rpm="$ARTIFACT_DIR/nli_client_ver14.rpm"
+controller_rpm="$ARTIFACT_DIR/nli_controller_agent_ver15.rpm"
+client_rpm="$ARTIFACT_DIR/nli_client_ver15.rpm"
 [[ -s $controller_rpm && -s $client_rpm ]] || { echo 'two-node acceptance: release RPMs are missing' >&2; exit 1; }
 
 suffix="${$}-$(date +%s)"
-network="nli-v14-acceptance-$suffix"
-controller="nli-v14-controller-$suffix"
-client="nli-v14-client-$suffix"
-discovery_controller="nli-v14-discovery-$suffix"
-fallback_controller="nli-v14-fallback-$suffix"
-bootstrap_volume="nli-v14-bootstrap-$suffix"
+network="nli-v15-acceptance-$suffix"
+controller="nli-v15-controller-$suffix"
+client="nli-v15-client-$suffix"
+discovery_controller="nli-v15-discovery-$suffix"
+fallback_controller="nli-v15-fallback-$suffix"
+bootstrap_volume="nli-v15-bootstrap-$suffix"
 work=$(mktemp -d "$NLI_BUILD_SCRATCH/nli-two-node.XXXXXXXX")
 mkdir -p "$work/browser"
 image='nli-rocky-test:rocky10'
@@ -57,7 +57,7 @@ docker volume create "$bootstrap_volume" >/dev/null
 start_node "$controller" controller
 start_node "$client" client
 
-docker exec "$controller" dnf -y install /artifacts/nli_controller_agent_ver14.rpm >/dev/null
+docker exec "$controller" dnf -y install /artifacts/nli_controller_agent_ver15.rpm >/dev/null
 docker exec -i "$controller" python3 - <<'PY'
 import json, pathlib
 path = pathlib.Path('/etc/nli/controller.json')
@@ -84,7 +84,7 @@ ca_before_rotation=$(docker exec "$controller" sha256sum /var/lib/nli-controller
 docker exec "$controller" grep -Fxq 'Description=Nexora Log Intelligence - Main Controller' /usr/lib/systemd/system/nli-controller-agent.service
 docker exec "$controller" sh -c '! grep -q "^Documentation=" /usr/lib/systemd/system/nli-controller-agent.service'
 
-docker exec "$client" dnf -y install /artifacts/nli_client_ver14.rpm >/dev/null
+docker exec "$client" dnf -y install /artifacts/nli_client_ver15.rpm >/dev/null
 docker exec "$client" sh -c 'cp /bootstrap/nli-client-bootstrap.env /root/nli-client-bootstrap.env && chmod 0600 /root/nli-client-bootstrap.env'
 printf 'production\nrocky10\noperations\n' | docker exec -i "$client" /usr/sbin/nli-client-setup /root/nli-client-bootstrap.env
 docker exec "$client" test ! -e /root/nli-client-bootstrap.env
@@ -115,7 +115,7 @@ replay_status=$(docker exec "$client" bash -c '
   token=$(sed -n "s/^NLI_ENROLLMENT_TOKEN=//p" /bootstrap/nli-client-bootstrap.env)
   curl --silent --show-error --cacert /etc/nli/controller-ca.crt -o /tmp/replayed-enrollment.json -w "%{http_code}" \
     -H "Content-Type: application/json" -H "X-NLI-Enrollment: ${token}" \
-    -d "{\"id\":\"replayed-node\",\"hostname\":\"replayed-node\",\"os\":\"linux\",\"arch\":\"x86_64\",\"version\":\"14.0.0\"}" \
+    -d "{\"id\":\"replayed-node\",\"hostname\":\"replayed-node\",\"os\":\"linux\",\"arch\":\"x86_64\",\"version\":\"15.0.0\"}" \
     https://controller:12382/api/v1/node/register
 ')
 [[ $replay_status == 401 ]] || { echo "two-node acceptance: consumed enrollment token returned HTTP $replay_status" >&2; exit 1; }
@@ -128,7 +128,7 @@ rotated_status=$(docker exec "$client" bash -c '
   token=$(sed -n "s/^NLI_ENROLLMENT_TOKEN=//p" /bootstrap/nli-client-bootstrap.env)
   curl --silent --show-error --cacert /etc/nli/controller-ca.crt -o /tmp/rotated-enrollment.json -w "%{http_code}" \
     -H "Content-Type: application/json" -H "X-NLI-Enrollment: ${token}" \
-    -d "{\"id\":\"rotated-node\",\"hostname\":\"rotated-node\",\"os\":\"linux\",\"arch\":\"x86_64\",\"version\":\"14.0.0\"}" \
+    -d "{\"id\":\"rotated-node\",\"hostname\":\"rotated-node\",\"os\":\"linux\",\"arch\":\"x86_64\",\"version\":\"15.0.0\"}" \
     https://controller:12382/api/v1/node/register
 ')
 [[ $rotated_status == 201 ]] || { echo "two-node acceptance: rotated enrollment token returned HTTP $rotated_status" >&2; exit 1; }
@@ -176,7 +176,7 @@ docker run --rm --network "$network" \
 # CA/client/entitlement materials on another node and prove they are ignored in
 # favor of the offline generated-CA fallback.
 start_node "$discovery_controller" discovery-controller
-docker exec "$discovery_controller" dnf -y install /artifacts/nli_controller_agent_ver14.rpm >/dev/null
+docker exec "$discovery_controller" dnf -y install /artifacts/nli_controller_agent_ver15.rpm >/dev/null
 docker exec -i "$discovery_controller" bash -s <<'SH'
 set -euo pipefail
 mkdir -p /etc/pki/tls/certs /etc/pki/tls/private /etc/pki/ca-trust/source/anchors
@@ -211,7 +211,7 @@ docker exec "$discovery_controller" grep -Fxq 'NLI_CONTROLLER_CA_BASE64=' /boots
 docker exec "$discovery_controller" test ! -e /var/lib/nli-controller/tls/ca.key
 
 start_node "$fallback_controller" fallback-controller
-docker exec "$fallback_controller" dnf -y install /artifacts/nli_controller_agent_ver14.rpm >/dev/null
+docker exec "$fallback_controller" dnf -y install /artifacts/nli_controller_agent_ver15.rpm >/dev/null
 docker exec -i "$fallback_controller" bash -s <<'SH'
 set -euo pipefail
 mkdir -p /etc/rhsm/ca /etc/pki/entitlement /etc/nli

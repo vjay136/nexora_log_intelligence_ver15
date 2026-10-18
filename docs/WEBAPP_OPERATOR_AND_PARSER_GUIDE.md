@@ -1,6 +1,6 @@
-# NLI V14 WebApp Operator and Parser Guide
+# NLI V15 WebApp Operator and Parser Guide
 
-This guide describes controls present in the V14 web application and controller code. The WebApp is an authenticated control plane, not a browser-only parser. Navigation is built from `web/app.js`; the controller provides `/api/v1` operations and RBAC. Use the controller-served WebView or a supported Vercel/Cloudflare proxy configured to the controller. A static file preview cannot sign in or manage state.
+This guide describes controls present in the V15 web application and controller code. The WebApp is an authenticated control plane, not a browser-only parser. Navigation is built from `web/app.js`; the controller provides `/api/v1` operations and RBAC. Use the controller-served WebView or a supported Vercel/Cloudflare proxy configured to the controller. A static file preview cannot sign in or manage state.
 
 ## 1. Sign in and understand the connection
 
@@ -44,6 +44,19 @@ An optional **Assurance parser workflow** can copy a live parser from its dropdo
 When **AI API Key Integration** is enabled on the controller, a failed deterministic Assurance run automatically asks the provider to diagnose the masked failure and suggest a bounded declarative parser. The original raw line and API key never go to client nodes, and the proposal store retains the source SHA-256 rather than the raw sample. The **AI remediation review** section shows the failure summary, coverage/errors, suggested method, proposed JSON and review state. A different reviewer must select **Approve as second reviewer**. After approval, rerun the same failing sample so its hash matches, then select **Create validated parser draft**. That action runs the ordinary deterministic validation; it does not publish or roll out anything. Continue with submit, independent parser approval, publish and Parser Fleet Sync. If the provider is offline or unconfigured, deterministic parsing and the manual workflow continue normally.
 
 The guided order at the top of Assurance is the supported workflow: inspect the corpus contract, run a transient sample, retain only approved test evidence, create and validate a draft, obtain independent approval, publish, verify every target hash in Parser Fleet Sync, then replay selected quarantine records. A corpus is a set of input/expected-output cases used for regression testing; it is controller-side Assurance data and is not an RPM parser directory. Runtime ParserPacks are the reviewed files installed under `/etc/nli/parsers` and synchronized generations under `/var/lib/nli/parsers`.
+
+The client has two separate parser state locations by design. Complete approved
+ParserPacks in `/var/lib/nli/parsers` are loaded directly by `nli-agent` after
+the sidecar performs an atomic generation swap and restarts the service. The
+supporting KV, static-pattern, projection, template, regex, known-key, and
+semantic assets are stored under `/var/lib/nli/parser-assets/<class>` with a
+hash-verified `bundle.json`. These smaller assets are review and construction
+inputs; they do not execute independently or bypass ParserPack validation.
+Parser Fleet Sync reports the same desired/applied bundle hash and per-asset
+revision for the controller and every client. The client rejects an unknown
+class, invalid JSON, duplicate ID, altered asset hash, or altered bundle hash,
+keeps the previous generation on failure, and reports the error to the
+controller. This avoids network lookup in the per-record parsing path.
 
 ## 4. Create and operate a parser
 
@@ -117,7 +130,7 @@ The browser must never receive Supabase server secrets, Storage secret keys, nod
 
 ## 8. Controller and client RPM operations
 
-V14 packages target x86_64 Rocky Linux 9/10 as described by the repository support/release docs. The controller RPM (`nli-controller-agent`) provides the authenticated API, WebView, enrollment, fleet sync, rollout, telemetry and controller-side storage integration. The client RPM (`nli-client`) provides the parsing agent and restricted fleet-control sidecar. Install the controller on a management host and clients on log-producing hosts; install both on one host only if it also processes local logs.
+V15 packages target x86_64 Rocky Linux 9/10 as described by the repository support/release docs. The controller RPM (`nli-controller-agent`) provides the authenticated API, WebView, enrollment, fleet sync, rollout, telemetry and controller-side storage integration. The client RPM (`nli-client`) provides the parsing agent and restricted fleet-control sidecar. Install the controller on a management host and clients on log-producing hosts; install both on one host only if it also processes local logs.
 
 - Controller health/API and WebView default to port `12382` in private TLS mode. Public Nginx/ACME, Cloudflare Tunnel, and operator-managed proxy modes keep `12382` on loopback and publish only HTTPS. The parser-agent metrics endpoint is `127.0.0.1:12380/metrics`; it is local metrics, not the browser API.
 - Run controller setup with `sudo nli-controller-setup`; it configures the admin, TLS/listen mode, and backend settings and creates a one-use client bootstrap file under `/root`. Transfer it securely, then on a client run `sudo nli-client-setup /path/to/nli-client-bootstrap.env`. For another client, rotate enrollment on the controller with `sudo nli-controller-setup --rotate-enrollment` and use the new one-use file.

@@ -13,7 +13,8 @@ args = parser.parse_args()
 root = args.root.resolve()
 files = [
     "package.json", "package-lock.json", "vercel.json", "wrangler.jsonc", ".env.local.example",
-    "web/index.html", "web/app.js", "web/styles.css", "web/nli-mark.svg", "web/_headers", "web/README.txt",
+    "web/index.html", "web/app.js", "web/styles.css", "web/nli-mark.svg", "web/nexora-logo.png", "web/login-banner.png",
+    "web/_headers", "web/README.txt", "web/package.json", "web/package-lock.json", "web/vite.config.js",
     "web/Open-NLI-WebView.ps1", "api/v1/[...path].js",
     "functions/api/v1/[[path]].js", "web/e2e.spec.js", "tests/vercel-proxy.test.js",
     "tests/cloudflare-proxy.test.js", "tests/vercel-preflight.test.js",
@@ -22,7 +23,7 @@ files = [
 # Include the deployment build helper when present, but never generated output,
 # local environment files, dependency folders, or controller credentials.
 files += [p.relative_to(root).as_posix() for p in sorted((root / "scripts").glob("*web*.mjs"))]
-for optional in ("docs/WEBVIEW_SUPABASE_DEPLOYMENT.md", "docs/V14_DEPLOYMENT.md",
+for optional in ("docs/WEBVIEW_SUPABASE_DEPLOYMENT.md", "docs/V15_DEPLOYMENT.md",
                  "docs/VERCEL_DEPLOYMENT.md", "docs/CLOUDFLARE_PAGES_DEPLOYMENT.md",
                  "scripts/build-vercel.mjs"):
     if (root / optional).is_file():
@@ -39,7 +40,7 @@ with zipfile.ZipFile(args.output, "w", compression=zipfile.ZIP_DEFLATED, compres
         info.external_attr = 0o100644 << 16
         info.compress_type = zipfile.ZIP_DEFLATED
         content = source.read_bytes()
-        if source.suffix.lower() != ".ps1":
+        if source.suffix.lower() in {".html", ".css", ".js", ".mjs", ".json", ".md", ".txt", ".svg", ".example", ".jsonc"}:
             content = content.replace(b"\r\n", b"\n")
         archive.writestr(info, content)
 print(f"Vercel/Cloudflare deployment bundle: {args.output.name}")

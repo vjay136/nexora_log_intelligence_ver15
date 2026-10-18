@@ -111,7 +111,7 @@ test('premium login loads runtime assets and rejects invalid credentials', async
   await expect(page.getByTestId('nav-operations')).toBeVisible();
 });
 
-test('V14 blank-panel regressions: every workspace renders authenticated controller responses', async ({ page }) => {
+test('V15 blank-panel regressions: every workspace renders authenticated controller responses', async ({ page }) => {
   await login(page);
   const failedAPIs = [];
   const successfulAPIs = new Set();

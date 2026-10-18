@@ -1,13 +1,17 @@
 {
-  "name": "nli-v14-webview-tests",
-  "version": "14.0.0",
+  "name": "nexora-log-intelligence-v15-web",
+  "version": "15.0.0",
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "test:e2e": "playwright test e2e.spec.js",
     "test:ui": "playwright test ui.spec.js"
   },
   "devDependencies": {
-    "@playwright/test": "1.55.0"
+    "@playwright/test": "1.64.1",
+    "vite": "8.3.4"
   }
 }

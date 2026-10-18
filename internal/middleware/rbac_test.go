@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"nexora.local/nli-v14/internal/auditlog"
-	"nexora.local/nli-v14/internal/auth"
-	"nexora.local/nli-v14/internal/middleware"
+	"nexora.local/nli-v15/internal/auditlog"
+	"nexora.local/nli-v15/internal/auth"
+	"nexora.local/nli-v15/internal/middleware"
 )
 
 func securityFixture(t *testing.T) (*middleware.SecurityMiddleware, *auth.Store, string) {

@@ -1,9 +1,9 @@
-name: NLI V14 release
+name: NLI V15 release
 
 on:
   push:
     branches: [main]
-    tags: ['v14.*']
+    tags: ['v15.*']
   pull_request:
     paths:
       - 'packaging/**'
@@ -15,7 +15,7 @@ on:
   workflow_dispatch:
     inputs:
       previous_release_tag:
-        description: 'Existing release tag in this repository containing genuine previous client/controller RPMs'
+        description: 'Existing V14 release tag containing genuine previous client/controller RPMs'
         required: true
         type: string
 
@@ -44,7 +44,7 @@ jobs:
 
 
   release-candidate:
-    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v14.')
+    if: github.event_name == 'workflow_dispatch' || startsWith(github.ref, 'refs/tags/v15.')
     needs: infrastructure-static
     runs-on: ubuntu-24.04
     permissions:
@@ -60,10 +60,11 @@ jobs:
       - name: Download genuine previous release RPMs
         env:
           GH_TOKEN: ${{ github.token }}
-          PREVIOUS_RELEASE_TAG: ${{ inputs.previous_release_tag || 'v12.0.0-1' }}
+          PREVIOUS_RELEASE_TAG: ${{ inputs.previous_release_tag || 'v14.0.0-1' }}
+          PREVIOUS_RELEASE_REPO: vjay136/nexora_log_intelligence_ver14
         run: |
           mkdir -p '${{ runner.temp }}/previous'
-          if gh release download "$PREVIOUS_RELEASE_TAG" --repo "$GITHUB_REPOSITORY" \
+          if gh release download "$PREVIOUS_RELEASE_TAG" --repo "$PREVIOUS_RELEASE_REPO" \
               --pattern '*.rpm' --dir '${{ runner.temp }}/previous'; then
             echo 'REQUIRE_PREVIOUS=1' >> "$GITHUB_ENV"
           else
@@ -76,17 +77,17 @@ jobs:
         run: make release-rocky OUTPUT_DIR='${{ runner.temp }}/nli-release' PREVIOUS_DIR='${{ runner.temp }}/previous'
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: nli-v14-unsigned-release
+          name: nli-v15-unsigned-release
           path: ${{ runner.temp }}/nli-release/
           if-no-files-found: error
           retention-days: 14
-      - name: Publish V14 GitHub release
-        if: startsWith(github.ref, 'refs/tags/v14.')
+      - name: Publish V15 GitHub release
+        if: startsWith(github.ref, 'refs/tags/v15.')
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           gh release create "$GITHUB_REF_NAME" '${{ runner.temp }}/nli-release/'* \
             --repo "$GITHUB_REPOSITORY" \
-            --title "Nexora Log Intelligence Ver14 — $GITHUB_REF_NAME" \
+            --title "Nexora Log Intelligence Ver15 — $GITHUB_REF_NAME" \
             --notes-file docs/release/README.md \
             --latest

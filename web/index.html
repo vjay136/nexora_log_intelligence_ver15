@@ -5,18 +5,19 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="color-scheme" content="dark">
   <meta name="theme-color" content="#060816">
-  <meta name="description" content="Nexora Log Intelligence Ver14 enterprise parser and fleet control plane">
-  <title>Nexora Log Intelligence Ver14</title>
+  <meta name="description" content="Nexora Log Intelligence enterprise parser and fleet control plane">
+  <title>Nexora Log Intelligence</title>
   <link rel="stylesheet" href="./styles.css">
-  <script src="./app.js" defer></script>
+  <script type="module" src="./app.js"></script>
 </head>
 <body>
   <section id="auth-view" class="auth-view">
     <div class="auth-aurora" aria-hidden="true"></div>
     <div class="auth-shell">
       <aside class="auth-showcase" aria-label="NLI platform capabilities">
+        <div class="login-banner" role="img" aria-label="Nexora Log Intelligence: infinite logs, intelligent parsing, and multiple secured outputs" data-banner="login-banner.png"></div>
         <div class="showcase-header">
-          <div class="brand brand-large eagle-brand"><span class="eagle-orbit" aria-hidden="true"></span><img class="brand-mark brand-logo" src="./nli-mark.svg" alt="Nexora eagle security shield"><span><b>Nexora Log Intelligence Ver14</b><small>Infinite Logs. One Engine (NLI). Intelligent Parsing. Multiple Endpoints. Fully Secured.</small></span></div>
+          <div class="brand brand-large eagle-brand"><span class="eagle-orbit" aria-hidden="true"></span><img class="brand-mark brand-logo" src="./nexora-logo.png" alt="Nexora Log Intelligence logo"><span><b>Nexora Log Intelligence</b><small>Infinite Logs. One Engine (NLI). Intelligent Parsing. Multiple Endpoints. Fully Secured.</small></span></div>
           <span class="edition-badge"><i></i>Enterprise</span>
         </div>
         <div class="showcase-copy">
@@ -39,7 +40,7 @@
 
       <form id="login-form" class="auth-card" autocomplete="on">
         <div class="login-heading">
-          <img class="mobile-brand-mark" src="./nli-mark.svg" alt="Nexora eagle security shield">
+          <img class="mobile-brand-mark" src="./nexora-logo.png" alt="Nexora Log Intelligence logo">
           <div><p class="eyebrow">Authorized operators</p><h2>Welcome back</h2><p class="muted">Sign in to the production control workspace.</p></div>
         </div>
         <div class="demo-access" aria-label="Initial administrator access">
@@ -63,14 +64,14 @@
 
   <div id="app-view" class="app-view" hidden>
     <aside id="sidebar" class="sidebar">
-      <div class="brand sidebar-brand"><img class="brand-mark brand-logo" src="./nli-mark.svg" alt="Nexora eagle security shield"><span><b>Nexora Log Intelligence Ver14</b><small>Protected parser control plane</small></span><span class="version-chip">V14</span></div>
+      <div class="brand sidebar-brand"><img class="brand-mark brand-logo" src="./nexora-logo.png" alt="Nexora Log Intelligence logo"><span><b>Nexora Log Intelligence</b><small>Protected parser control plane</small></span><span class="version-chip">V15</span></div>
       <nav id="nav" aria-label="Control plane sections"></nav>
       <div class="identity"><span id="identity-name">—</span><small id="identity-role">—</small><button id="logout" class="ghost small">Sign out</button></div>
     </aside>
     <main class="main">
       <header class="topbar">
         <button id="menu-toggle" class="icon-button" aria-label="Toggle navigation">☰</button>
-        <div class="topbar-brand"><img src="./nli-mark.svg" alt="Nexora eagle security shield"><span><b>Nexora Log Intelligence Ver14</b><small>Infinite Logs. One Engine (NLI). Intelligent Parsing. Multiple Endpoints. Fully Secured.</small></span></div>
+        <div class="topbar-brand"><img src="./nexora-logo.png" alt="Nexora Log Intelligence logo"><span><b>Nexora Log Intelligence</b><small>Infinite Logs. One Engine (NLI). Intelligent Parsing. Multiple Endpoints. Fully Secured.</small></span></div>
         <div class="page-heading"><p id="page-kicker" class="eyebrow">Control plane</p><h2 id="page-title">Operations</h2></div>
         <div class="topbar-actions"><span class="environment-chip">Production</span><span id="stream-state" class="status neutral"><i></i>Offline</span><span id="freshness" class="freshness">Not loaded</span><div class="notification-wrap"><button id="notification-bell" class="icon-button notification-bell" type="button" aria-label="Notifications" aria-expanded="false"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M18 9a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4"/></svg><span id="notification-count" class="notification-count" hidden>0</span></button><div id="notification-panel" class="notification-panel" hidden><div class="notification-heading"><b>Notifications</b><button class="ghost small" id="clear-notifications" type="button">Clear</button></div><div id="notification-list" aria-live="polite"><p class="muted">No notifications yet.</p></div></div></div><button id="refresh" class="secondary">Refresh</button></div>
       </header>

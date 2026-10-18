@@ -10,9 +10,10 @@ import (
 	"strings"
 	"testing"
 
-	"nexora.local/nli-v14/internal/engine"
-	"nexora.local/nli-v14/internal/familyprofile"
-	"nexora.local/nli-v14/parser-policy"
+	"nexora.local/nli-v15/internal/engine"
+	"nexora.local/nli-v15/internal/familyprofile"
+	"nexora.local/nli-v15/parser-policy"
+	"nexora.local/nli-v15/telemetry"
 )
 
 // TestTask4Integration verifies a reviewed SMTP-OUT corpus record through the
@@ -136,6 +137,80 @@ func TestQuarantineIsNotSuccessfulEmptyPayload(t *testing.T) {
 	}
 	if result.ParseTelemetry.Route != "quarantine" || result.ParseTelemetry.Result != "quarantined" || len(result.ParseTelemetry.ErrorCodes) == 0 {
 		t.Fatalf("quarantine telemetry incomplete: %+v", result.ParseTelemetry)
+	}
+}
+
+func TestParallelPackAttemptsKeepDeterministicWinnerAndAttemptOrder(t *testing.T) {
+	adapter, err := NewParserPackAdapter()
+	if err != nil {
+		t.Fatal(err)
+	}
+	input := parserpolicy.SMTPGoldenInput
+	source := engine.Source{Service: "smtp", Hostname: "stable-node"}
+	first := adapter.TryParseV5Production(input, source)
+	if !first.Success {
+		t.Fatal("golden SMTP record did not parse")
+	}
+	firstAttempts, _ := json.Marshal(stableParserAttempts(first.ParseTelemetry.OrderedAttempts))
+	firstFields, _ := json.Marshal(first.EventPayload.Fields)
+	for i := 0; i < 20; i++ {
+		got := adapter.TryParseV5Production(input, source)
+		if !got.Success || got.ParseTelemetry.ParserID != first.ParseTelemetry.ParserID {
+			t.Fatalf("iteration %d selected a different parser", i)
+		}
+		attempts, _ := json.Marshal(stableParserAttempts(got.ParseTelemetry.OrderedAttempts))
+		fields, _ := json.Marshal(got.EventPayload.Fields)
+		if string(attempts) != string(firstAttempts) || string(fields) != string(firstFields) {
+			t.Fatalf("iteration %d changed attempt order or exact output\nfirst attempts: %s\nnext attempts:  %s\nfirst fields: %s\nnext fields:  %s", i, firstAttempts, attempts, firstFields, fields)
+		}
+	}
+}
+
+func stableParserAttempts(attempts []telemetry.ParserAttempt) []struct {
+	ParserID      string
+	Priority      int
+	Outcome       telemetry.AttemptOutcome
+	FailureReason string
+	FieldsEmitted int
+} {
+	stable := make([]struct {
+		ParserID      string
+		Priority      int
+		Outcome       telemetry.AttemptOutcome
+		FailureReason string
+		FieldsEmitted int
+	}, len(attempts))
+	for index, attempt := range attempts {
+		stable[index] = struct {
+			ParserID      string
+			Priority      int
+			Outcome       telemetry.AttemptOutcome
+			FailureReason string
+			FieldsEmitted int
+		}{
+			ParserID:      attempt.ParserID,
+			Priority:      attempt.Priority,
+			Outcome:       attempt.Outcome,
+			FailureReason: attempt.FailureReason,
+			FieldsEmitted: attempt.FieldsEmitted,
+		}
+	}
+	return stable
+}
+
+func BenchmarkProductionAdapterPackAttempts(b *testing.B) {
+	adapter, err := NewParserPackAdapter()
+	if err != nil {
+		b.Fatal(err)
+	}
+	source := engine.Source{Service: "smtp", Hostname: "bench-node"}
+	b.ReportAllocs()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		result := adapter.TryParseV5Production(parserpolicy.SMTPGoldenInput, source)
+		if !result.Success {
+			b.Fatal("golden SMTP record did not parse")
+		}
 	}
 }
 

@@ -11,8 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"nexora.local/nli-v14/projection"
-	"nexora.local/nli-v14/telemetry"
+	"nexora.local/nli-v15/projection"
+	"nexora.local/nli-v15/telemetry"
 )
 
 type ParserPackExecutor struct {

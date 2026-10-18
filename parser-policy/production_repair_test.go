@@ -7,7 +7,7 @@ import (
 	"testing"
 	"time"
 
-	"nexora.local/nli-v14/static-layout"
+	"nexora.local/nli-v15/static-layout"
 )
 
 func productionTestPack(stages []Stage) *ParserPack {

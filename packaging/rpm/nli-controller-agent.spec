@@ -1,11 +1,11 @@
-%{!?nli_version:%global nli_version 14.0.0}
+%{!?nli_version:%global nli_version 15.0.0}
 %{!?nli_release:%global nli_release 1}
 Name:           nli-controller-agent
 Version:        %{nli_version}
 Release:        %{nli_release}%{?dist}
-Summary:        Nexora Log Intelligence Ver14 controller and Web console
+Summary:        Nexora Log Intelligence Ver15 controller and Web console
 License:        LicenseRef-Proprietary
-URL:            https://github.com/vjay136/nexora_log_intelligence_ver14.git
+URL:            https://github.com/vjay136/nexora_log_intelligence_ver15.git
 Source0:        %{name}-%{version}.tar.gz
 ExclusiveArch:  x86_64
 Requires(pre):  shadow-utils
@@ -19,8 +19,8 @@ AutoReqProv:    no
 %global __os_install_post %{nil}
 
 %description
-NLI v14 controller providing authenticated enrollment, fleet synchronization,
-rollouts, telemetry APIs, and the byte-verified webview_ver14 console.
+NLI v15 controller providing authenticated enrollment, fleet synchronization,
+rollouts, telemetry APIs, and the byte-verified webview_ver15 console.
 
 %prep
 %autosetup -n %{name}-%{version}
@@ -30,7 +30,7 @@ rollouts, telemetry APIs, and the byte-verified webview_ver14 console.
 
 %install
 install -d %{buildroot}%{_bindir} %{buildroot}%{_sbindir} %{buildroot}%{_sysconfdir}/nli
-install -d %{buildroot}/usr/lib/systemd/system %{buildroot}%{_datadir}/nli/webview_ver14 %{buildroot}%{_datadir}/nli/supabase
+install -d %{buildroot}/usr/lib/systemd/system %{buildroot}%{_datadir}/nli/webview_ver15 %{buildroot}%{_datadir}/nli/supabase
 install -d %{buildroot}%{_docdir}/%{name} %{buildroot}/var/lib/nli-controller
 install -m 0755 bin/nli-controller-agent bin/nli %{buildroot}%{_bindir}/
 install -m 0755 sbin/nli-controller-setup %{buildroot}%{_sbindir}/nli-controller-setup
@@ -39,9 +39,9 @@ install -m 0755 sbin/nli-admin-reset %{buildroot}%{_sbindir}/nli-admin-reset
 install -m 0644 supabase/nli_schema.sql %{buildroot}%{_datadir}/nli/supabase/nli_schema.sql
 install -m 0640 configs/controller.json configs/controller.env configs/geoip.env %{buildroot}%{_sysconfdir}/nli/
 install -m 0644 systemd/nli-controller-agent.service systemd/nli-controller-bootstrap.service systemd/nli-geoip-update.service systemd/nli-geoip-update.timer %{buildroot}/usr/lib/systemd/system/
-cp -a web/. %{buildroot}%{_datadir}/nli/webview_ver14/
-find %{buildroot}%{_datadir}/nli/webview_ver14 -type d -exec chmod 0755 {} +
-find %{buildroot}%{_datadir}/nli/webview_ver14 -type f -exec chmod 0644 {} +
+cp -a web/. %{buildroot}%{_datadir}/nli/webview_ver15/
+find %{buildroot}%{_datadir}/nli/webview_ver15 -type d -exec chmod 0755 {} +
+find %{buildroot}%{_datadir}/nli/webview_ver15 -type f -exec chmod 0644 {} +
 install -m 0644 README.md %{buildroot}%{_docdir}/%{name}/README.md
 
 %pre
@@ -51,7 +51,7 @@ getent passwd nli >/dev/null || useradd -r -g nli -d /var/lib/nli-controller -s 
 %post
 config_file=%{_sysconfdir}/nli/controller.json
 if grep -Eq '"web_dir"[[:space:]]*:[[:space:]]*"/usr/share/nli/webview_ver[15678]"' "$config_file"; then
-  sed -i -E 's#/usr/share/nli/webview_ver[15678](["/])#/usr/share/nli/webview_ver14\1#g' "$config_file"
+  sed -i -E 's#/usr/share/nli/webview_ver[15678](["/])#/usr/share/nli/webview_ver15\1#g' "$config_file"
 fi
 secret_file=%{_sysconfdir}/nli/controller.env
 chown root:nli "$secret_file"
@@ -86,14 +86,17 @@ systemctl daemon-reload >/dev/null 2>&1 || :
 %attr(0644,root,root) /usr/lib/systemd/system/nli-geoip-update.service
 %attr(0644,root,root) /usr/lib/systemd/system/nli-geoip-update.timer
 %dir %attr(0755,root,root) %{_datadir}/nli
-%dir %attr(0755,root,root) %{_datadir}/nli/webview_ver14
-%attr(0644,root,root) %{_datadir}/nli/webview_ver14/*
+%dir %attr(0755,root,root) %{_datadir}/nli/webview_ver15
+%attr(0644,root,root) %{_datadir}/nli/webview_ver15/*
 %dir %attr(0755,root,root) %{_datadir}/nli/supabase
 %attr(0644,root,root) %{_datadir}/nli/supabase/nli_schema.sql
 %dir %attr(0750,nli,nli) /var/lib/nli-controller
 %doc %{_docdir}/%{name}/README.md
 
 %changelog
+* Sat Oct 18 2026 Nexora Engineering <engineering@nexora.local> - 15.0.0-1
+- Add V15 Assurance quarantine analysis, official branding, live dashboards, and Vite deployment support
+
 * Fri Oct 16 2026 Nexora Engineering <engineering@nexora.local> - 14.0.0-1
 - Add AWS RHEL/Rocky wrappers, private VPC defaults, Cloudflare Tunnel, and hosted-WebApp deployment contracts
 

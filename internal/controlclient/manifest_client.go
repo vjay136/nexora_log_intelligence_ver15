@@ -16,8 +16,8 @@ import (
 	"sync"
 	"time"
 
-	"nexora.local/nli-v14/internal/protocol"
-	parserpolicy "nexora.local/nli-v14/parser-policy"
+	"nexora.local/nli-v15/internal/protocol"
+	parserpolicy "nexora.local/nli-v15/parser-policy"
 )
 
 type ArtifactFetcher interface {

@@ -21,7 +21,7 @@ elif [[ -n ${GPG_KEYRING:-} ]]; then
 fi
 
 if [[ ${REQUIRE_RPM_SIGNATURES:-0} == 1 ]]; then
-  for rpm_file in "$ARTIFACT_DIR/nli_client_ver14.rpm" "$ARTIFACT_DIR/nli_controller_agent_ver14.rpm"; do
+  for rpm_file in "$ARTIFACT_DIR/nli_client_ver15.rpm" "$ARTIFACT_DIR/nli_controller_agent_ver15.rpm"; do
     rpm -Kv "$rpm_file" | grep -Eq 'Header V[0-9]+ RSA/SHA[0-9]+ Signature.*: OK' || { echo "RPM signature missing or invalid: $rpm_file" >&2; exit 1; }
   done
   verified=1

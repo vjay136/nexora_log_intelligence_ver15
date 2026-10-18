@@ -6,12 +6,13 @@ import (
 	"encoding/hex"
 	"regexp"
 	"strings"
+	"sync"
 	"time"
 
-	"nexora.local/nli-v14/internal/engine"
-	"nexora.local/nli-v14/internal/familyprofile"
-	parserpolicy "nexora.local/nli-v14/parser-policy"
-	"nexora.local/nli-v14/telemetry"
+	"nexora.local/nli-v15/internal/engine"
+	"nexora.local/nli-v15/internal/familyprofile"
+	parserpolicy "nexora.local/nli-v15/parser-policy"
+	"nexora.local/nli-v15/telemetry"
 )
 
 const maxProfileExecutions = 8
@@ -103,9 +104,11 @@ func (adapter *ParserPackAdapter) TryParseV5Production(input string, source engi
 		candidates = candidates[:maxProfileExecutions]
 	}
 
-	executions := make([]profileExecution, 0, len(candidates))
-	selectedIndex := -1
-	for _, candidate := range candidates {
+	// Candidate packs are immutable after activation. Execute the small, bounded
+	// candidate set concurrently, but store results by original index so the
+	// telemetry attempt order and tie-breaking remain identical to serial runs.
+	executions := make([]profileExecution, len(candidates))
+	execute := func(index int, candidate profileCandidate) {
 		executionService := service
 		if candidate.profile.Pack.ID == adapter.smtpCompatibility.Pack.ID {
 			executionService = "smtp"
@@ -118,9 +121,24 @@ func (adapter *ParserPackAdapter) TryParseV5Production(input string, source engi
 				"file":     source.File,
 			},
 		})
-		executions = append(executions, profileExecution{candidate: candidate, result: result, err: err})
-		index := len(executions) - 1
-		if successfulExecution(result, err) && (selectedIndex < 0 || betterExecution(executions[index], executions[selectedIndex])) {
+		executions[index] = profileExecution{candidate: candidate, result: result, err: err}
+	}
+	if len(candidates) == 1 {
+		execute(0, candidates[0])
+	} else {
+		var group sync.WaitGroup
+		for index, candidate := range candidates {
+			group.Add(1)
+			go func(index int, candidate profileCandidate) {
+				defer group.Done()
+				execute(index, candidate)
+			}(index, candidate)
+		}
+		group.Wait()
+	}
+	selectedIndex := -1
+	for index := range executions {
+		if successfulExecution(executions[index].result, executions[index].err) && (selectedIndex < 0 || betterExecution(executions[index], executions[selectedIndex])) {
 			selectedIndex = index
 		}
 	}

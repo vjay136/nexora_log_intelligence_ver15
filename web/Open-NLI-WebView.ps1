@@ -15,14 +15,14 @@ function Test-NLIController {
         $health = Invoke-WebRequest -UseBasicParsing -Uri "$BaseUrl/api/v1/health" -Headers @{ Accept = 'application/json' } -TimeoutSec 3
         $healthIdentity = [string]$health.Headers['X-NLI-Controller']
         $body = $health.Content | ConvertFrom-Json
-        if ($health.StatusCode -ne 200 -or $healthIdentity -ne 'v14' -or $body.service -ne 'nli-controller-agent' -or $body.api_version -ne 'v1') {
+        if ($health.StatusCode -ne 200 -or $healthIdentity -ne 'v15' -or $body.service -ne 'nli-controller-agent' -or $body.api_version -ne 'v1') {
             return $false
         }
 
         $preflight = Invoke-WebRequest -UseBasicParsing -Method Options -Uri "$BaseUrl/api/v1/auth/login" -Headers @{ Accept = 'application/json' } -TimeoutSec 3
         $loginIdentity = [string]$preflight.Headers['X-NLI-Controller']
         $allowedMethods = @(([string]$preflight.Headers['Allow']) -split ',' | ForEach-Object { $_.Trim().ToUpperInvariant() })
-        return $preflight.StatusCode -eq 204 -and $loginIdentity -eq 'v14' -and $allowedMethods.Contains('POST')
+        return $preflight.StatusCode -eq 204 -and $loginIdentity -eq 'v15' -and $allowedMethods.Contains('POST')
     } catch {
         return $false
     }
@@ -57,10 +57,10 @@ if (-not (Test-NLIController $baseUrl)) {
         Start-Sleep -Seconds 1
     }
     if (-not $ready) {
-        throw "The SSH tunnel opened, but $baseUrl does not expose the NLI Ver14 health and login contracts. Check nli-controller-agent on Rocky."
+        throw "The SSH tunnel opened, but $baseUrl does not expose the NLI Ver15 health and login contracts. Check nli-controller-agent on Rocky."
     }
 }
 
-Write-Host "Verified Nexora Log Intelligence Ver14 controller and login API: $baseUrl" -ForegroundColor Green
+Write-Host "Verified Nexora Log Intelligence Ver15 controller and login API: $baseUrl" -ForegroundColor Green
 Write-Host 'Sign in as admin. If the stored password is unknown, run sudo nli-admin-reset on the controller.'
 if (-not $NoBrowser) { Start-Process "$baseUrl/" }

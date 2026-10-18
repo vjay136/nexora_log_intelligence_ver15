@@ -1,5 +1,24 @@
 # Changelog
 
+## [15.0.0-1] - 2026-10-18
+
+- Adopted the supplied official Nexora Log Intelligence eagle logo and login
+  banner across the authenticated console and Vite WebApp.
+- Added bounded concurrent ParserPack attempts with deterministic winner and
+  telemetry ordering while retaining existing bounded source workers and
+  buffered output delivery.
+- Added exact paste normalization evidence for CRLF, LF, and bare-CR input and
+  removed only end-of-line spaces and tabs before Assurance analysis.
+- Added audited quarantine re-analysis from verified retained raw input without
+  silently changing parser or record state.
+- Added exact time/count dashboard axes with keyboard-accessible point details
+  backed only by controller telemetry.
+- Added a Vite production build and a clean web-only export for the dedicated
+  Vercel repository while preserving the same-origin authenticated API proxy.
+- Preserved reviewed parser catalogs, known-key/static/template/delimiter and
+  projection assets, approval-gated rollout, atomic client activation, durable
+  quarantine, and Loki/ClickHouse/file output contracts.
+
 ## [14.0.0-1] - 2026-10-17
 
 - Added a noninteractive `--automatic` controller path with stable root-owned

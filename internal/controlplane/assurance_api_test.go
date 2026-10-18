@@ -107,6 +107,27 @@ func TestAssuranceNormalizesLineEndingsAndReturnsParserCreationHelper(t *testing
 	}
 }
 
+func TestAssuranceMixedLineEndingDetectionAndExactLineCounts(t *testing.T) {
+	f := newAPIFixture(t)
+	raw := "first  \t\r\n\r\nsecond\t\nthird   \r\n\t\n"
+	response, data := f.request(http.MethodPost, "/api/v1/assurance/run", map[string]any{"raw": raw})
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("assurance run %d: %s", response.StatusCode, data)
+	}
+	result := decodeMap(t, data)
+	if got, want := result["raw"], "first\n\nsecond\nthird"; got != want {
+		t.Fatalf("normalized raw = %#v, want %#v", got, want)
+	}
+	endings, ok := result["line_endings"].(map[string]any)
+	if !ok || endings["crlf"] != float64(3) || endings["lf"] != float64(2) || endings["cr"] != float64(0) {
+		t.Fatalf("submitted line ending counts inaccurate: %#v", result["line_endings"])
+	}
+	helper := result["parser_creation_helper"].(map[string]any)
+	if helper["sample_lines"] != float64(4) {
+		t.Fatalf("normalized sample line count = %#v, want 4", helper["sample_lines"])
+	}
+}
+
 func TestAIProviderProtocolAdapters(t *testing.T) {
 	tests := []struct {
 		name           string

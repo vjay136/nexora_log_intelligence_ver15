@@ -9,10 +9,10 @@ import (
 	"strings"
 	"testing"
 
-	"nexora.local/nli-v14/internal/familyprofile"
-	"nexora.local/nli-v14/internal/output"
-	parserpolicy "nexora.local/nli-v14/parser-policy"
-	"nexora.local/nli-v14/telemetry"
+	"nexora.local/nli-v15/internal/familyprofile"
+	"nexora.local/nli-v15/internal/output"
+	parserpolicy "nexora.local/nli-v15/parser-policy"
+	"nexora.local/nli-v15/telemetry"
 )
 
 func TestAgentStartupRoutesAllReviewedFamiliesAndCAPDQuarantine(t *testing.T) {

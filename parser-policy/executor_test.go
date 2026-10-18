@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"nexora.local/nli-v14/telemetry"
+	"nexora.local/nli-v15/telemetry"
 )
 
 // TestParserPackExecutor_SMTPSuccess tests successful SMTP parsing through the executor

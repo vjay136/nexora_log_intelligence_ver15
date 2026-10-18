@@ -22,10 +22,10 @@ import (
 	"sync"
 	"time"
 
-	"nexora.local/nli-v14/internal/auditlog"
-	"nexora.local/nli-v14/internal/engine"
-	"nexora.local/nli-v14/internal/middleware"
-	metastore "nexora.local/nli-v14/internal/store"
+	"nexora.local/nli-v15/internal/auditlog"
+	"nexora.local/nli-v15/internal/engine"
+	"nexora.local/nli-v15/internal/middleware"
+	metastore "nexora.local/nli-v15/internal/store"
 )
 
 type assuranceVault struct {
@@ -132,12 +132,14 @@ func (s *Server) handleAssuranceRun(w http.ResponseWriter, r *http.Request) {
 		jsonError(w, "raw input is required", http.StatusBadRequest)
 		return
 	}
+	lineEndings := assuranceLineEndingCounts(request.Raw)
 	request.Raw = normalizeAssuranceRaw(request.Raw)
 	if request.Raw == "" {
 		jsonError(w, "raw input is required", http.StatusBadRequest)
 		return
 	}
 	result := s.runAssurance(request)
+	result["line_endings"] = lineEndings
 	actor := "anonymous"
 	if principal := middleware.GetSecurityContext(r); principal != nil {
 		actor = principal.Username
@@ -251,6 +253,26 @@ func normalizeAssuranceRaw(raw string) string {
 		lines = lines[:len(lines)-1]
 	}
 	return strings.Join(lines, "\n")
+}
+
+// assuranceLineEndingCounts reports the submitted representation before
+// normalization, so mixed LF/CRLF samples remain diagnosable in the lab.
+func assuranceLineEndingCounts(raw string) map[string]int {
+	counts := map[string]int{"crlf": 0, "lf": 0, "cr": 0}
+	for i := 0; i < len(raw); i++ {
+		switch raw[i] {
+		case '\r':
+			if i+1 < len(raw) && raw[i+1] == '\n' {
+				counts["crlf"]++
+				i++
+			} else {
+				counts["cr"]++
+			}
+		case '\n':
+			counts["lf"]++
+		}
+	}
+	return counts
 }
 
 func buildParserCreationHelper(raw, requestedFamily string, envelope engine.Envelope, actual map[string]any) map[string]any {

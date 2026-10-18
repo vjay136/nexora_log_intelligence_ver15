@@ -5,7 +5,7 @@ import (
 	"testing"
 	"time"
 
-	"nexora.local/nli-v14/internal/fleet"
+	"nexora.local/nli-v15/internal/fleet"
 )
 
 func tmpFleet(t *testing.T) *fleet.Fleet {

@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"syscall"
 
-	"nexora.local/nli-v14/internal/agent"
-	"nexora.local/nli-v14/internal/engine"
+	"nexora.local/nli-v15/internal/agent"
+	"nexora.local/nli-v15/internal/engine"
 )
 
 func main() {

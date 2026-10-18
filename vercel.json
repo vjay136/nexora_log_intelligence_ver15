@@ -1,8 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "framework": null,
-  "buildCommand": "node scripts/build-webapp.mjs",
-  "outputDirectory": "build/web-public",
+  "framework": "vite",
+  "installCommand": "npm ci --prefix web --ignore-scripts",
+  "buildCommand": "if [ -f web/vite.config.js ]; then npm --prefix web run build; else node scripts/build-webapp.mjs; fi",
+  "outputDirectory": "build/vite-web",
   "functions": {
     "api/v1/[...path].js": {
       "maxDuration": 60

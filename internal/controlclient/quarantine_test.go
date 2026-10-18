@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"nexora.local/nli-v14/internal/quarantine"
+	"nexora.local/nli-v15/internal/quarantine"
 )
 
 func TestRawQuarantineUploadIsAuthenticatedAndBoundedToWaitingRows(t *testing.T) {

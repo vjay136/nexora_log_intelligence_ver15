@@ -34,7 +34,7 @@ if find "$ROOT" -path "$ROOT/.git" -prune -o -name '*.disabled' -print | grep -q
   fail "disabled tests remain in the integrated revision"
 fi
 
-web_assets=("$ROOT/web/index.html" "$ROOT/web/app.js" "$ROOT/web/styles.css" "$ROOT/web/nli-mark.svg")
+web_assets=("$ROOT/web/index.html" "$ROOT/web/app.js" "$ROOT/web/styles.css" "$ROOT/web/nli-mark.svg" "$ROOT/web/nexora-logo.png" "$ROOT/web/login-banner.png")
 for asset in "${web_assets[@]}"; do
   [[ -s "$asset" ]] || fail "WebView asset is missing: ${asset#$ROOT/}"
 done

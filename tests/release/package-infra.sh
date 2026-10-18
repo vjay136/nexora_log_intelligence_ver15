@@ -15,7 +15,7 @@ mkdir -p "$work"/{fixture/source,fixture/binaries/bin,previous,previous-work,pas
 fixture_script='set -euo pipefail
 export PATH=/usr/local/go/bin:/usr/bin:/bin
 cd /fixture/source
-printf "module nexora.local/nli-v14\n\ngo 1.24.9\n" > go.mod
+printf "module nexora.local/nli-v15\n\ngo 1.24.9\n" > go.mod
 cat > main.go <<"GO"
 package main
 
@@ -33,7 +33,7 @@ func main() {
     name := filepath.Base(os.Args[0])
     if len(os.Args) > 1 && (os.Args[1] == "--version" || os.Args[1] == "version") {
         if name == "nli-controller-agent" { name = "nli-control" }
-        fmt.Println(name, "14.0.0")
+        fmt.Println(name, "15.0.0")
         return
     }
     switch name {
@@ -52,7 +52,7 @@ func main() {
         mux := http.NewServeMux()
         mux.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
             w.Header().Set("Content-Type", "application/json")
-            w.Header().Set("X-NLI-Controller", "v14")
+            w.Header().Set("X-NLI-Controller", "v15")
             w.Header().Set("Cache-Control", "no-store")
             if r.Method != http.MethodGet {
                 w.Header().Set("Allow", "GET")
@@ -64,7 +64,7 @@ func main() {
         })
         mux.HandleFunc("/api/v1/auth/login", func(w http.ResponseWriter, r *http.Request) {
             w.Header().Set("Content-Type", "application/json")
-            w.Header().Set("X-NLI-Controller", "v14")
+            w.Header().Set("X-NLI-Controller", "v15")
             w.Header().Set("Cache-Control", "no-store")
             w.Header().Set("Allow", "POST, OPTIONS")
             if r.Method == http.MethodOptions { w.WriteHeader(http.StatusNoContent); return }
@@ -73,7 +73,7 @@ func main() {
             _, _ = io.WriteString(w, `{"username":"admin","role":"admin"}`)
         })
         mux.HandleFunc("/api/v1/auth/me", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, `{"username":"admin","role":"admin"}`) })
-        mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "<!doctype html><html><body>NLI v14 fixture</body></html>") })
+        mux.HandleFunc("/", func(w http.ResponseWriter, _ *http.Request) { _, _ = io.WriteString(w, "<!doctype html><html><body>NLI v15 fixture</body></html>") })
         _ = http.ListenAndServe("127.0.0.1:12382", mux)
     case "nli-client-control":
         select {}
@@ -110,7 +110,7 @@ build_rpm_fixture() {
 build_rpm_fixture "$work/previous" "$work/previous-work" 8.0.0 1
 build_rpm_fixture "$work/pass1" "$work/pass1-work" "$NLI_VERSION" "$NLI_RELEASE"
 build_rpm_fixture "$work/pass2" "$work/pass2-work" "$NLI_VERSION" "$NLI_RELEASE"
-for name in nli_client_ver14.rpm nli_clinet_ver14.rpm nli_controller_agent_ver14.rpm webview_ver14.zip webapp_ver14.zip install-controller-ver14.sh install-client-ver14.sh install-controller-aws-ver14.sh install-client-aws-ver14.sh install-controller-aws-cloudflare-ver14.sh aws-rhel-preflight-ver14.sh aws-security-group-plan-ver14.sh setup-cloudflare-tunnel-v14.sh verify-cloudflare-tunnel-v14.sh uninstall-cloudflare-tunnel-v14.sh cloudflare-quick-diagnosis-v14.sh vercel-preflight.mjs uninstall-controller-ver14.sh uninstall-client-ver14.sh INSTALLATION_AND_CONFIGURATION.md V14_AWS_RED_HAT_INSTALLATION.md V14_CLOUDFLARE_TUNNEL.md VERCEL_DEPLOYMENT.md CLOUDFLARE_PAGES_DEPLOYMENT.md WEBAPP_OPERATOR_AND_PARSER_GUIDE.md PARSER_CATALOG.md SOURCE_BINARY_PROVENANCE.txt SOURCE_REVISION WEBVIEW_SHA256SUMS RELEASE_ID; do
+for name in nli_client_ver15.rpm nli_clinet_ver15.rpm nli_controller_agent_ver15.rpm webview_ver15.zip webapp_ver15.zip install-controller-ver15.sh install-client-ver15.sh install-controller-aws-ver15.sh install-client-aws-ver15.sh install-controller-aws-cloudflare-ver15.sh aws-rhel-preflight-ver15.sh aws-security-group-plan-ver15.sh setup-cloudflare-tunnel-v15.sh verify-cloudflare-tunnel-v15.sh uninstall-cloudflare-tunnel-v15.sh cloudflare-quick-diagnosis-v15.sh vercel-preflight.mjs uninstall-controller-ver15.sh uninstall-client-ver15.sh INSTALLATION_AND_CONFIGURATION.md V15_AWS_RED_HAT_INSTALLATION.md V15_CLOUDFLARE_TUNNEL.md VERCEL_DEPLOYMENT.md CLOUDFLARE_PAGES_DEPLOYMENT.md WEBAPP_OPERATOR_AND_PARSER_GUIDE.md PARSER_CATALOG.md SOURCE_BINARY_PROVENANCE.txt SOURCE_REVISION WEBVIEW_SHA256SUMS RELEASE_ID; do
   cmp -s "$work/pass1/$name" "$work/pass2/$name" || { echo "fixture output is non-deterministic: $name" >&2; exit 1; }
 done
 cp -a "$work/pass1/." "$work/final/"

@@ -3,7 +3,7 @@ package detector_test
 import (
 	"testing"
 
-	"nexora.local/nli-v14/internal/detector"
+	"nexora.local/nli-v15/internal/detector"
 )
 
 func TestDetect(t *testing.T) {

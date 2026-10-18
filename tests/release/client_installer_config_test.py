@@ -10,7 +10,7 @@ import tempfile
 
 
 ROOT = pathlib.Path(sys.argv[1] if len(sys.argv) > 1 else pathlib.Path(__file__).parents[2])
-INSTALLER = ROOT / "scripts" / "install-client-ver14.sh"
+INSTALLER = ROOT / "scripts" / "install-client-ver15.sh"
 START = '  python3 - "$agent_config" "$agent_env" /etc/nli/client-control.json <<\'PY\'\n'
 
 

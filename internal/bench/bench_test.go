@@ -5,8 +5,8 @@ import (
 	"strings"
 	"testing"
 
-	"nexora.local/nli-v14/internal/bench"
-	"nexora.local/nli-v14/internal/engine"
+	"nexora.local/nli-v15/internal/bench"
+	"nexora.local/nli-v15/internal/engine"
 )
 
 func TestRun_BasicAccuracy(t *testing.T) {
@@ -42,9 +42,9 @@ func TestRun_BasicAccuracy(t *testing.T) {
 
 func TestCompareReport(t *testing.T) {
 	a := &bench.Report{Label: "v1", SuccessfulRouteRate: 0.50, JSONValidity: 0.50, AvgLatencyUS: 200}
-	b := &bench.Report{Label: "v14", SuccessfulRouteRate: 0.95, JSONValidity: 0.99, AvgLatencyUS: 50}
+	b := &bench.Report{Label: "v15", SuccessfulRouteRate: 0.95, JSONValidity: 0.99, AvgLatencyUS: 50}
 	md := bench.CompareReport(a, b)
-	if !strings.Contains(md, "v1") || !strings.Contains(md, "v14") {
+	if !strings.Contains(md, "v1") || !strings.Contains(md, "v15") {
 		t.Error("compare report should mention both labels")
 	}
 	if !strings.Contains(md, "Successful Route Rate") {

@@ -11,5 +11,11 @@
 /app.js
   Cache-Control: public, max-age=0, must-revalidate
 
+/nexora-logo.png
+  Cache-Control: public, max-age=31536000, immutable
+
+/login-banner.png
+  Cache-Control: public, max-age=31536000, immutable
+
 /styles.css
   Cache-Control: public, max-age=0, must-revalidate

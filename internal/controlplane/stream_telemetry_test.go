@@ -9,9 +9,9 @@ import (
 	"testing"
 	"time"
 
-	"nexora.local/nli-v14/internal/auth"
-	"nexora.local/nli-v14/internal/middleware"
-	"nexora.local/nli-v14/telemetry"
+	"nexora.local/nli-v15/internal/auth"
+	"nexora.local/nli-v15/internal/middleware"
+	"nexora.local/nli-v15/telemetry"
 )
 
 func TestStreamHubSnapshotAndSlowSubscriber(t *testing.T) {

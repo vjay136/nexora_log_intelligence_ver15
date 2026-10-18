@@ -8,7 +8,7 @@ import (
 	"strings"
 	"testing"
 
-	"nexora.local/nli-v14/internal/output"
+	"nexora.local/nli-v15/internal/output"
 )
 
 func TestSourceWorkersKeepEachInputOutputOrder(t *testing.T) {

@@ -38,7 +38,7 @@ if [[ -n $BOOTSTRAP_FILE ]]; then
     fail "bootstrap file not found: $BOOTSTRAP_FILE (pass a file path or enter a controller URL)"
   fi
 else
-  printf '\nNLI v14 managed-client setup\n'
+  printf '\nNLI v15 managed-client setup\n'
   read -r -p 'Controller URL (production requires HTTPS): ' controller_url
   read -r -s -p 'Controller enrollment token: ' enrollment_token
   printf '\n'
@@ -152,12 +152,12 @@ if ! health_json=$(curl "${curl_args[@]}" --verbose --dump-header "$health_heade
   fail 'controller health check failed; correct the specific DNS, route, firewall, certificate trust, or hostname issue above and rerun setup'
 fi
 rm -f "$curl_diagnostics"
-tr -d '\r' <"$health_headers" | grep -Eiq '^X-NLI-Controller:[[:space:]]*v14$' || {
+tr -d '\r' <"$health_headers" | grep -Eiq '^X-NLI-Controller:[[:space:]]*v15$' || {
   rm -f "$health_headers"
-  fail 'target did not identify itself as an NLI v14 controller'
+  fail 'target did not identify itself as an NLI v15 controller'
 }
 rm -f "$health_headers"
-printf '%s' "$health_json" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("service")=="nli-controller-agent" and d.get("api_version")=="v1"' || fail 'target is not an NLI v14 controller'
+printf '%s' "$health_json" | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d.get("service")=="nli-controller-agent" and d.get("api_version")=="v1"' || fail 'target is not an NLI v15 controller'
 
 umask 077
 env_tmp=$(mktemp "${ENV_FILE}.XXXXXX")
@@ -231,7 +231,7 @@ PY
 sample_log=/var/log/nli/input/auto.log
 install -d -o nli -g nli -m 0750 "$(dirname "$sample_log")"
 if [[ ! -s $sample_log ]]; then
-  printf '%s\n' '20261009 120000000+0000 nli-v14-sample smtp 1000 0 123456789 Note;SieveRuleMsg(2005/1) id=V14SAMPLE0001:policy=INBOUND:checkpoint=MSGRCPT:rule=IN_sample:msg=MISREPORT=eventType;sample|action;accept|geo;US|fromhost;192.0.2.10|helo;mail.example.test|sender;<sample@example.test>|spf_log;pass|dkim;1|dmarc;pass|rcpt;<recipient@example.test>|vade_vdct;clean|antispam;none' >"$sample_log"
+  printf '%s\n' '20261009 120000000+0000 nli-v15-sample smtp 1000 0 123456789 Note;SieveRuleMsg(2005/1) id=V15SAMPLE0001:policy=INBOUND:checkpoint=MSGRCPT:rule=IN_sample:msg=MISREPORT=eventType;sample|action;accept|geo;US|fromhost;192.0.2.10|helo;mail.example.test|sender;<sample@example.test>|spf_log;pass|dkim;1|dmarc;pass|rcpt;<recipient@example.test>|vade_vdct;clean|antispam;none' >"$sample_log"
   chown nli:nli "$sample_log"
   chmod 0640 "$sample_log"
   info "created readable parser sample record: $sample_log"

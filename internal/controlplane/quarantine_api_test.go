@@ -61,6 +61,35 @@ func TestQuarantineRawIsEncryptedInDedicatedLocalStoreAndDownloadAudited(t *test
 	}
 }
 
+func TestQuarantineAnalyzeUsesExactRetainedRawAndDoesNotResolveOrPublish(t *testing.T) {
+	f := newAPIFixture(t)
+	enableTestQuarantineRetention(t, f)
+	raw := "status=UNKNOWN\t\r\n"
+	if err := f.server.storeQuarantineRecord(context.Background(), quarantineRecordInput{ID: "q-analyze", NodeID: "node-1", Service: "mail", Raw: raw, Status: "waiting"}, true); err != nil {
+		t.Fatal(err)
+	}
+	response, data := f.request(http.MethodPost, "/api/v1/quarantine/records/q-analyze/analyze", map[string]any{"desired": map[string]any{"status": "UNKNOWN"}})
+	if response.StatusCode != http.StatusOK {
+		t.Fatalf("analyze %d: %s", response.StatusCode, data)
+	}
+	body := decodeMap(t, data)
+	if body["parser_changed"] != false || body["review_state"] != "analysis_only" {
+		t.Fatalf("analysis unexpectedly changed parser state: %s", data)
+	}
+	result := body["result"].(map[string]any)
+	if result["raw"] != "status=UNKNOWN" {
+		t.Fatalf("analysis did not normalize exact retained sample correctly: %#v", result["raw"])
+	}
+	record, _, err := f.server.getQuarantineRecord(context.Background(), "q-analyze")
+	if err != nil || record.Status != "waiting" {
+		t.Fatalf("analysis changed quarantine status: record=%+v err=%v", record, err)
+	}
+	historyResponse, historyData := f.request(http.MethodGet, "/api/v1/quarantine/history", nil)
+	if historyResponse.StatusCode != http.StatusOK || !strings.Contains(string(historyData), "failure_analyzed") {
+		t.Fatalf("analysis history missing: %d %s", historyResponse.StatusCode, historyData)
+	}
+}
+
 func TestQuarantineRetentionDisabledKeepsMetadataButNeverRaw(t *testing.T) {
 	f := newAPIFixture(t)
 	raw := "exact line must stay client-local"

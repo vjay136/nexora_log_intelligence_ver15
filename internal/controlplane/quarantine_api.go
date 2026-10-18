@@ -20,9 +20,9 @@ import (
 	"sync"
 	"time"
 
-	"nexora.local/nli-v14/internal/auditlog"
-	"nexora.local/nli-v14/internal/middleware"
-	metastore "nexora.local/nli-v14/internal/store"
+	"nexora.local/nli-v15/internal/auditlog"
+	"nexora.local/nli-v15/internal/middleware"
+	metastore "nexora.local/nli-v15/internal/store"
 )
 
 const (
@@ -471,6 +471,10 @@ func queryBound(r *http.Request, key string, fallback, min, max int) (int, error
 func (s *Server) handleQuarantineRecord(w http.ResponseWriter, r *http.Request) {
 	path := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/v1/quarantine/records/"), "/")
 	parts := strings.Split(path, "/")
+	if len(parts) == 2 && parts[1] == "analyze" && r.Method == http.MethodPost {
+		s.handleQuarantineAnalyze(w, r, parts[0])
+		return
+	}
 	if len(parts) != 2 || parts[1] != "raw" || r.Method != http.MethodGet {
 		http.NotFound(w, r)
 		return
@@ -516,6 +520,69 @@ func (s *Server) handleQuarantineRecord(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("X-Content-Type-Options", "nosniff")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(plain)
+}
+
+// handleQuarantineAnalyze runs the production parser against the exact
+// encrypted sample retained for a quarantine record. It creates an audit
+// event but never changes parser state or resolves the record.
+func (s *Server) handleQuarantineAnalyze(w http.ResponseWriter, r *http.Request, rawID string) {
+	principal, err := s.security.AuthorizeRequest(r, middleware.PermissionReadLogs)
+	if err != nil {
+		jsonError(w, "logs:read permission required", http.StatusForbidden)
+		return
+	}
+	if _, err = s.security.AuthorizeRequest(r, middleware.PermissionParsePreview); err != nil {
+		jsonError(w, "parsers:preview permission required", http.StatusForbidden)
+		return
+	}
+	id := safeID(rawID)
+	if id == "" {
+		jsonError(w, "invalid record ID", http.StatusBadRequest)
+		return
+	}
+	if err := s.expireQuarantineRaw(r.Context(), time.Now().UTC()); err != nil {
+		jsonError(w, "quarantine retention status unavailable", http.StatusServiceUnavailable)
+		return
+	}
+	record, _, err := s.getQuarantineRecord(r.Context(), id)
+	if err != nil {
+		jsonError(w, "quarantine record not found", http.StatusNotFound)
+		return
+	}
+	rawDoc, err := s.quarantine.store.Get(r.Context(), quarantineRawCollection, id, 0)
+	if err != nil {
+		jsonError(w, "exact raw was not retained or has expired", http.StatusNotFound)
+		return
+	}
+	var sealed sealedQuarantineRaw
+	if json.Unmarshal(rawDoc.Payload, &sealed) != nil {
+		jsonError(w, "retained raw record is invalid", http.StatusInternalServerError)
+		return
+	}
+	plain, err := s.quarantine.open(id, sealed)
+	if err != nil {
+		jsonError(w, "retained raw record could not be verified", http.StatusInternalServerError)
+		return
+	}
+	var request assuranceRequest
+	if r.Body != nil && r.ContentLength != 0 {
+		if decodeJSON(r, &request, 64<<10) != nil {
+			jsonError(w, "invalid analysis options", http.StatusBadRequest)
+			return
+		}
+	}
+	request.Raw = string(plain)
+	if request.Service == "" || request.Service == "auto" {
+		request.Service = record.Service
+	}
+	result := s.runAssurance(request)
+	result["line_endings"] = assuranceLineEndingCounts(string(plain))
+	if err := s.appendQuarantineHistory(r.Context(), quarantineHistoryEvent{Timestamp: time.Now().UTC(), Action: "failure_analyzed", RecordID: id, NodeID: record.NodeID, Status: record.Status, Message: "Exact retained raw analyzed with the selected production parser; no parser state changed."}, principal.Username); err != nil {
+		jsonError(w, "analysis completed but history could not be written", http.StatusServiceUnavailable)
+		return
+	}
+	s.auditAction(principal, "quarantine.analyze", quarantineRecordsCollection+"/"+id, "success", map[string]string{"sha256": sealed.SHA256, "record_revision": strconv.Itoa(record.AttemptCount)})
+	jsonOK(w, map[string]any{"record": record, "result": result, "raw_sha256": sealed.SHA256, "review_state": "analysis_only", "parser_changed": false})
 }
 
 func (s *Server) handleQuarantineExport(w http.ResponseWriter, r *http.Request) {

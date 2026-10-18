@@ -12,7 +12,7 @@ import (
 	"runtime"
 	"testing"
 
-	"nexora.local/nli-v14/internal/controlplane"
+	"nexora.local/nli-v15/internal/controlplane"
 )
 
 func projectWeb(t *testing.T) string {

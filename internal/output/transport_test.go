@@ -11,7 +11,7 @@ import (
 	"sync/atomic"
 	"testing"
 
-	"nexora.local/nli-v14/internal/output"
+	"nexora.local/nli-v15/internal/output"
 )
 
 func TestLokiAuthenticationTenantAndAcknowledgedFlush(t *testing.T) {

@@ -14,15 +14,15 @@ import (
 	"strings"
 	"time"
 
-	"nexora.local/nli-v14/internal/adapter"
-	"nexora.local/nli-v14/internal/agent"
-	"nexora.local/nli-v14/internal/engine"
-	"nexora.local/nli-v14/internal/geoipdb"
-	"nexora.local/nli-v14/internal/multiline"
-	"nexora.local/nli-v14/internal/quarantine"
-	"nexora.local/nli-v14/internal/routing"
-	metastore "nexora.local/nli-v14/internal/store"
-	"nexora.local/nli-v14/telemetry"
+	"nexora.local/nli-v15/internal/adapter"
+	"nexora.local/nli-v15/internal/agent"
+	"nexora.local/nli-v15/internal/engine"
+	"nexora.local/nli-v15/internal/geoipdb"
+	"nexora.local/nli-v15/internal/multiline"
+	"nexora.local/nli-v15/internal/quarantine"
+	"nexora.local/nli-v15/internal/routing"
+	metastore "nexora.local/nli-v15/internal/store"
+	"nexora.local/nli-v15/telemetry"
 )
 
 func main() {
