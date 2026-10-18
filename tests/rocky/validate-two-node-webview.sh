@@ -161,7 +161,7 @@ docker run --rm --network "$network" \
   -e NLI_ADMIN_PASSWORD="$admin_password" \
   -e NLI_E2E_OUTPUT=/work/results \
   -e NLI_E2E_IGNORE_HTTPS_ERRORS=1 \
-  mcr.microsoft.com/playwright:v1.55.0-noble bash -lc '
+  mcr.microsoft.com/playwright:v1.64.1-noble bash -lc '
     set -euo pipefail
     sed -n "s/^NLI_CONTROLLER_CA_BASE64=//p" /bootstrap/nli-client-bootstrap.env | base64 -d >/usr/local/share/ca-certificates/nli-controller.crt
     update-ca-certificates >/dev/null
